@@ -573,136 +573,16 @@
       "sha256": "51794c41049eb7e54407b4c2655cf42d84c1675d8f01fd3034ca57b2126f93b5"
     },
     {
-      "id": "ocr",
-      "file": "icons/ocr.svg",
-      "label": "文字识别",
-      "category": "截图",
-      "description": "文字识别",
-      "source": "lucide",
-      "upstream": "scan-text",
-      "sourceUrl": "https://github.com/lucide-icons/lucide/blob/70562c1ee1c4fdcf736fe97bc893fb8511927934/icons/scan-text.svg",
-      "recommended": true,
-      "sha256": "cffc708f030fe25bdd1a72cf05ed257bb9d9db38000b32cbedb49f95d45b1347"
-    },
-    {
-      "id": "capture",
-      "file": "icons/capture.svg",
-      "label": "截图",
-      "category": "截图",
-      "description": "截图",
-      "source": "lucide",
-      "upstream": "scan-line",
-      "sourceUrl": "https://github.com/lucide-icons/lucide/blob/70562c1ee1c4fdcf736fe97bc893fb8511927934/icons/scan-line.svg",
-      "recommended": true,
-      "sha256": "cc64a08a074f43900a7d5f65d0542a0a1e5d1a526b7797b5d9361d534afc2be6"
-    },
-    {
-      "id": "pin",
-      "file": "icons/pin.svg",
-      "label": "贴图到桌面",
-      "category": "截图",
-      "description": "贴图到桌面",
-      "source": "lucide",
-      "upstream": "pin",
-      "sourceUrl": "https://github.com/lucide-icons/lucide/blob/70562c1ee1c4fdcf736fe97bc893fb8511927934/icons/pin.svg",
-      "recommended": true,
-      "sha256": "c929a14cb46aca2ac76e05b55c2ab529a91286abde1d8690d6a7a5cbdafb025e"
-    },
-    {
       "id": "crop",
       "file": "icons/crop.svg",
-      "label": "裁剪 / 框出组件",
-      "category": "截图",
-      "description": "裁剪 / 框出组件",
+      "label": "框出布局组件",
+      "category": "编辑",
+      "description": "在导入图片中框出需要调整的组件",
       "source": "lucide",
       "upstream": "crop",
       "sourceUrl": "https://github.com/lucide-icons/lucide/blob/70562c1ee1c4fdcf736fe97bc893fb8511927934/icons/crop.svg",
       "recommended": true,
       "sha256": "b20999d83d728e0cd06e5d910c75beaa9287f9d72a341e43dff480e175639fc3"
-    },
-    {
-      "id": "shadow",
-      "file": "icons/shadow.svg",
-      "label": "阴影与边框",
-      "category": "截图",
-      "description": "阴影与边框",
-      "source": "lucide",
-      "upstream": "layers-2",
-      "sourceUrl": "https://github.com/lucide-icons/lucide/blob/70562c1ee1c4fdcf736fe97bc893fb8511927934/icons/layers-2.svg",
-      "recommended": true,
-      "sha256": "09b45cff3a0863d1ed0a9c186e9c502eae8a7afa3048b721f54e8b2aabd663fa"
-    },
-    {
-      "id": "scroll-move-vertical",
-      "file": "icons/scroll-move-vertical.svg",
-      "label": "沿竖轴移动",
-      "category": "长截图",
-      "description": "沿竖轴移动",
-      "source": "lucide",
-      "upstream": "move-vertical",
-      "sourceUrl": "https://github.com/lucide-icons/lucide/blob/70562c1ee1c4fdcf736fe97bc893fb8511927934/icons/move-vertical.svg",
-      "recommended": true,
-      "sha256": "627d40832f02e1abacd89c3a344461e1b22ce8e51ebaf15dc675e736b4c32c41"
-    },
-    {
-      "id": "scroll-move-horizontal",
-      "file": "icons/scroll-move-horizontal.svg",
-      "label": "沿横轴移动",
-      "category": "长截图",
-      "description": "沿横轴移动",
-      "source": "lucide",
-      "upstream": "move-horizontal",
-      "sourceUrl": "https://github.com/lucide-icons/lucide/blob/70562c1ee1c4fdcf736fe97bc893fb8511927934/icons/move-horizontal.svg",
-      "recommended": true,
-      "sha256": "ae801e6d1a79b1d714ff676a7f5db5db2918970e1af24f03820b15d6823d7a39"
-    },
-    {
-      "id": "scroll-grip",
-      "file": "icons/scroll-grip.svg",
-      "label": "拖动工具栏",
-      "category": "长截图",
-      "description": "拖动工具栏",
-      "source": "lucide",
-      "upstream": "grip-vertical",
-      "sourceUrl": "https://github.com/lucide-icons/lucide/blob/70562c1ee1c4fdcf736fe97bc893fb8511927934/icons/grip-vertical.svg",
-      "recommended": true,
-      "sha256": "0ad62d4923df48098910d381a1fbda64aecf12b8e935e9a860d92d249dc50852"
-    },
-    {
-      "id": "scroll-mouse",
-      "file": "icons/scroll-mouse.svg",
-      "label": "自动 / 手动滚动",
-      "category": "长截图",
-      "description": "自动 / 手动滚动",
-      "source": "lucide",
-      "upstream": "mouse",
-      "sourceUrl": "https://github.com/lucide-icons/lucide/blob/70562c1ee1c4fdcf736fe97bc893fb8511927934/icons/mouse.svg",
-      "recommended": true,
-      "sha256": "c4977fc67c07e31344476a421195682f2020f110d0db976e453843be699c7ccf"
-    },
-    {
-      "id": "scroll-play",
-      "file": "icons/scroll-play.svg",
-      "label": "开始长截图",
-      "category": "长截图",
-      "description": "开始长截图",
-      "source": "lucide",
-      "upstream": "play",
-      "sourceUrl": "https://github.com/lucide-icons/lucide/blob/70562c1ee1c4fdcf736fe97bc893fb8511927934/icons/play.svg",
-      "recommended": true,
-      "sha256": "b79ae771b9c4b3f22c86b4f211a6d76ae7600cf620834ba641ea1c460e870420"
-    },
-    {
-      "id": "scroll-stop",
-      "file": "icons/scroll-stop.svg",
-      "label": "停止长截图",
-      "category": "长截图",
-      "description": "停止长截图",
-      "source": "lucide",
-      "upstream": "square",
-      "sourceUrl": "https://github.com/lucide-icons/lucide/blob/70562c1ee1c4fdcf736fe97bc893fb8511927934/icons/square.svg",
-      "recommended": true,
-      "sha256": "964ea19dd4d6fb78919c913ac3df93b7347efe46e31c0e34433a9828269b4697"
     },
     {
       "id": "image",
@@ -751,163 +631,9 @@
       "sourceUrl": "https://github.com/lucide-icons/lucide/blob/70562c1ee1c4fdcf736fe97bc893fb8511927934/icons/pause.svg",
       "recommended": true,
       "sha256": "1394ab3e4818a4dc358dbe231ed128d54f3b0aa26ca50ad0abf695d86dae0774"
-    },
-    {
-      "id": "scroll",
-      "file": "icons/scroll.svg",
-      "label": "长截图",
-      "category": "长截图",
-      "description": "轮廓直接对应长画面；上下箭头表达滚动而非下载。",
-      "source": "edithere",
-      "upstream": null,
-      "sourceUrl": "https://lucide.dev/contribute/icons/specification",
-      "recommended": true,
-      "sha256": "67fada23bd5a7dba9b48de135c57f53190aec0eb4e7bad120283eee9b329e967"
-    },
-    {
-      "id": "corner",
-      "file": "icons/corner.svg",
-      "label": "圆角",
-      "category": "截图",
-      "description": "右上一个大圆角，轮廓完整连续，圆角设置的含义更明确。",
-      "source": "edithere",
-      "upstream": "square-round-corner",
-      "sourceUrl": "https://github.com/lucide-icons/lucide/blob/70562c1ee1c4fdcf736fe97bc893fb8511927934/icons/square-round-corner.svg",
-      "recommended": true,
-      "sha256": "5c23cd93fa5ca31d51b9dfdfe3dc89e1637107092ea12fab505f60a55306286c"
-    },
-    {
-      "id": "scroll-trim-top",
-      "file": "icons/scroll-trim-top.svg",
-      "label": "裁去上方",
-      "category": "长截图",
-      "description": "实线为保留区域，成对断线为裁去区域；圆弧和断线沿中轴对称，四方向使用同一几何旋转。",
-      "source": "edithere",
-      "upstream": null,
-      "sourceUrl": "https://lucide.dev/contribute/icons/specification",
-      "recommended": true,
-      "sha256": "2c674564ed10cd0bd938f11e4ec23a8a00f41a6e8feb964ce1629fa3bd13abdd"
-    },
-    {
-      "id": "scroll-trim-right",
-      "file": "icons/scroll-trim-right.svg",
-      "label": "裁去右侧",
-      "category": "长截图",
-      "description": "实线为保留区域，成对断线为裁去区域；圆弧和断线沿中轴对称，四方向使用同一几何旋转。",
-      "source": "edithere",
-      "upstream": null,
-      "sourceUrl": "https://lucide.dev/contribute/icons/specification",
-      "recommended": true,
-      "sha256": "1dc869fb544c1b4358b5fb96e0301f43cdf04f54a7008e369853ca327b166477"
-    },
-    {
-      "id": "scroll-trim-bottom",
-      "file": "icons/scroll-trim-bottom.svg",
-      "label": "裁去下方",
-      "category": "长截图",
-      "description": "实线为保留区域，成对断线为裁去区域；圆弧和断线沿中轴对称，四方向使用同一几何旋转。",
-      "source": "edithere",
-      "upstream": null,
-      "sourceUrl": "https://lucide.dev/contribute/icons/specification",
-      "recommended": true,
-      "sha256": "b06143b92dfbc737e272ebc6ed17a7aa45d17d1932c2c89070b8ca2ab44b9a6c"
-    },
-    {
-      "id": "scroll-trim-left",
-      "file": "icons/scroll-trim-left.svg",
-      "label": "裁去左侧",
-      "category": "长截图",
-      "description": "实线为保留区域，成对断线为裁去区域；圆弧和断线沿中轴对称，四方向使用同一几何旋转。",
-      "source": "edithere",
-      "upstream": null,
-      "sourceUrl": "https://lucide.dev/contribute/icons/specification",
-      "recommended": true,
-      "sha256": "bffe2e9ca6a85c407a5e86f9f7efd85b78519d7507ac42a14d41bf38badd61bf"
     }
   ],
   "candidateGroups": [
-    {
-      "id": "scroll",
-      "label": "长截图",
-      "recommended": "scroll-frame-arrows",
-      "options": [
-        {
-          "id": "scroll-frame-arrows",
-          "file": "variants/scroll-frame-arrows.svg",
-          "label": "长画面 + 滚动",
-          "description": "推荐：轮廓直接对应长画面；上下箭头表达滚动而非下载。",
-          "source": "edithere",
-          "upstream": null,
-          "sourceUrl": "https://lucide.dev/contribute/icons/specification",
-          "recommended": true,
-          "sha256": "67fada23bd5a7dba9b48de135c57f53190aec0eb4e7bad120283eee9b329e967"
-        },
-        {
-          "id": "scroll-stretch",
-          "file": "variants/scroll-stretch.svg",
-          "label": "上下延伸",
-          "description": "Lucide 原版 stretch-vertical，最简洁，偏向伸长 / 扩展语义。",
-          "source": "lucide",
-          "upstream": "stretch-vertical",
-          "sourceUrl": "https://github.com/lucide-icons/lucide/blob/70562c1ee1c4fdcf736fe97bc893fb8511927934/icons/stretch-vertical.svg",
-          "recommended": false,
-          "sha256": "e2e4af43e8e96b22fdf4192f969fbf42c86c336107fbbf437c00d1e2cc541f13"
-        },
-        {
-          "id": "scroll-tall-frame",
-          "file": "variants/scroll-tall-frame.svg",
-          "label": "长画面轮廓",
-          "description": "Lucide 原版 rectangle-vertical，细节最少，需“长截图”提示帮助识别。",
-          "source": "lucide",
-          "upstream": "rectangle-vertical",
-          "sourceUrl": "https://github.com/lucide-icons/lucide/blob/70562c1ee1c4fdcf736fe97bc893fb8511927934/icons/rectangle-vertical.svg",
-          "recommended": false,
-          "sha256": "2a0b3ec8f2f06288cc2465e6458a2176a848a44bff0ef20d480f9e9a709a4a3b"
-        }
-      ],
-      "selected": "scroll-frame-arrows"
-    },
-    {
-      "id": "corner",
-      "label": "圆角",
-      "recommended": "corner-one-large",
-      "options": [
-        {
-          "id": "corner-one-large",
-          "file": "variants/corner-one-large.svg",
-          "label": "单角对照",
-          "description": "推荐：右上一个大圆角，轮廓完整连续，圆角设置的含义更明确。",
-          "source": "edithere",
-          "upstream": "square-round-corner",
-          "sourceUrl": "https://github.com/lucide-icons/lucide/blob/70562c1ee1c4fdcf736fe97bc893fb8511927934/icons/square-round-corner.svg",
-          "recommended": true,
-          "sha256": "5c23cd93fa5ca31d51b9dfdfe3dc89e1637107092ea12fab505f60a55306286c"
-        },
-        {
-          "id": "corner-soft-square",
-          "file": "variants/corner-soft-square.svg",
-          "label": "整体圆角",
-          "description": "基于 Lucide square，半径增加到 5；更柔和，但不突出单个圆角。",
-          "source": "edithere",
-          "upstream": "square",
-          "sourceUrl": "https://github.com/lucide-icons/lucide/blob/70562c1ee1c4fdcf736fe97bc893fb8511927934/icons/square.svg",
-          "recommended": false,
-          "sha256": "58d35512e34d4fc534542dd7b622c49187fe06257591c961cc1ebcc5f5e3b73e"
-        },
-        {
-          "id": "corner-open-arc",
-          "file": "variants/corner-open-arc.svg",
-          "label": "开放单角",
-          "description": "一条连续线以半径 8 从竖边过渡到横边；最轻，但语义更抽象。",
-          "source": "edithere",
-          "upstream": null,
-          "sourceUrl": "https://lucide.dev/contribute/icons/specification",
-          "recommended": false,
-          "sha256": "268e995c845b3520bd30331a888bd54bff54a423026ab87c5ce54846681719da"
-        }
-      ],
-      "selected": "corner-one-large"
-    },
     {
       "id": "explode",
       "label": "大爆炸 / 拆分组件",
@@ -1000,6 +726,22 @@
     "scroll-download",
     "scroll-edit",
     "scroll-pin",
-    "scroll-scissors"
+    "scroll-scissors",
+    "ocr",
+    "capture",
+    "pin",
+    "shadow",
+    "scroll-move-vertical",
+    "scroll-move-horizontal",
+    "scroll-grip",
+    "scroll-mouse",
+    "scroll-play",
+    "scroll-stop",
+    "scroll",
+    "corner",
+    "scroll-trim-top",
+    "scroll-trim-right",
+    "scroll-trim-bottom",
+    "scroll-trim-left"
   ]
 }

@@ -1,5 +1,8 @@
 # 让 AI 帮你配置 EditHere
 
+> 本地白板精简版请先按 [开发说明](DEVELOPMENT.md) 构建，并让 Agent 使用本次构建的 CLI 绝对路径。以下下载安装步骤针对上游原版，不能代替本地白板构建。
+
+
 **简体中文** · [English](AI-SETUP.en.md)
 
 [返回产品介绍](../README.md) · [命令行说明](AGENT-CLI.md) · [配套 skill](../skills/edithere/SKILL.md)
@@ -9,13 +12,13 @@
 把下面这段话交给能在你电脑上执行命令、读写文件的 AI Agent：
 
 ```text
-请按 https://github.com/Inginnng/EditHere/blob/codex/native/docs/AI-SETUP.md 帮我配置 EditHere 和当前 AI 工具的 edithere skill。先复用本机已有的程序；没有时再下载安装。不要打断我正在编辑的内容。完成后验证命令行与 skill，告诉我怎么开始使用。
+请按 https://github.com/yyyzl/EditHere/blob/codex/annotation-whiteboard/docs/AI-SETUP.md 帮我配置 EditHere 和当前 AI 工具的 edithere skill。先复用本机已有的程序；没有时再下载安装。不要打断我正在编辑的内容。完成后验证命令行与 skill，告诉我怎么开始使用。
 ```
 
 希望免安装时，用这一段：
 
 ```text
-请按 https://github.com/Inginnng/EditHere/blob/codex/native/docs/AI-SETUP.md 为我配置 EditHere 免安装版和当前 AI 工具的 edithere skill。先找已有的解压目录；没有时下载官方完整免安装版压缩包。不要运行安装器、修改 PATH 或设置开机启动。保存 CLI 的完整路径，验证后告诉我怎么使用。
+请按 https://github.com/yyyzl/EditHere/blob/codex/annotation-whiteboard/docs/AI-SETUP.md 为我配置 EditHere 免安装版和当前 AI 工具的 edithere skill。先找已有的解压目录；没有时下载官方完整免安装版压缩包。不要运行安装器、修改 PATH 或设置开机启动。保存 CLI 的完整路径，验证后告诉我怎么使用。
 ```
 
 网页聊天或远程云端 Agent 如果不能访问你的电脑，就只能提供指导，不能仅凭这段话完成本机安装。**源码与发布包已公开**：配置所需的仓库文件与 Releases 可公开访问，无需专门申请项目权限。
@@ -36,7 +39,7 @@
 
 仅在本机没有可用程序或确需升级时下载。
 
-1. 从官方仓库 `Inginnng/EditHere` 的 [Releases](https://github.com/Inginnng/EditHere/releases) 元数据选择适合当前平台的发布版本，读取该版本说明、实际资产名称及 `SHA256SUMS.txt`，不要根据旧文档猜文件名或下载地址。发布资产名不含版本号，可直接用固定地址取最新版：`https://github.com/Inginnng/EditHere/releases/latest/download/EditHere-win-x64-setup.exe`（安装器）、`EditHere-win-x64.zip`（免安装版）、`EditHere-macos-universal.dmg`、`SHA256SUMS.txt`。
+1. 从官方仓库 `Inginnng/EditHere` 的 [Releases](https://github.com/yyyzl/EditHere/releases) 元数据选择适合当前平台的发布版本，读取该版本说明、实际资产名称及 `SHA256SUMS.txt`，不要根据旧文档猜文件名或下载地址。发布资产名不含版本号，可直接用固定地址取最新版：`https://github.com/yyyzl/EditHere/releases/latest/download/EditHere-win-x64-setup.exe`（安装器）、`EditHere-win-x64.zip`（免安装版）、`EditHere-macos-universal.dmg`、`SHA256SUMS.txt`。
 2. 可通过官方公开页面或 GitHub API 读取发布信息。若本机已配置 GitHub CLI，可用 `gh release view --repo Inginnng/EditHere --json tagName,assets,body` 读取最新发布信息，再按得到的标签和准确资产名下载；不必为下载公开程序额外配置凭据。
 3. 如果返回 401/403/404 或下载失败，检查实际 URL、资产是否存在、API 限流与网络状态；已登录工具还应检查其认证状态。报告具体阻塞，不索要访问令牌、不猜镜像，也不把网页错误内容保存成安装包后执行。可继续复用本机已有完整程序。
 4. 下载程序和同一版本的 `SHA256SUMS.txt`，用 SHA-256 比对对应条目。Windows 可用 `Get-FileHash -Algorithm SHA256 -LiteralPath <文件路径>`；macOS 可用 `shasum -a 256 <文件路径>`。缺失条目或不一致时停止使用该文件并检查原因。

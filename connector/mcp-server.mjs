@@ -5,7 +5,6 @@
 // MCP 客户端调用：
 //   edithere_status           查询 EditHere 运行与文档状态
 //   edithere_open             打开图片、视频或 .edithere 项目（仅请求受理）
-//   edithere_capture          唤起截图（仅请求受理）
 //   edithere_annotate_start   发起标注会话后立即返回会话 ID（推荐）
 //   edithere_annotate_poll    查询会话是否完成，完成时返回反馈摘要
 //   edithere_annotate         发起标注会话并阻塞等待用户点击"完成并返回 AI"
@@ -186,7 +185,7 @@ function parseCliJson(stdout) {
 const EXIT_CODE_HINTS = {
   2: '参数或通信协议错误',
   3: 'EditHere 应用或连接不可用（可能未运行，或 Agent 接口未就绪）',
-  4: '当前状态忙（已有未保存文档、截图或进行中的标注会话）',
+  4: '当前状态忙（已有未保存文档或进行中的标注会话）',
   5: '文件或 I/O 错误（输入不存在、输出已存在或写入失败）',
   6: '用户取消了本次操作',
   7: '等待用户提交反馈超时',
@@ -746,13 +745,8 @@ const TOOLS = [
     },
   },
   {
-    name: 'edithere_capture',
-    description: '唤起 EditHere 的截图功能（仅请求受理，不等待反馈）。用户随后可用全局快捷键或界面完成截图。',
-    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
-  },
-  {
     name: 'edithere_annotate',
-    description: `发起一次 EditHere 标注会话：打开指定图片、视频或项目，等待用户写批注、调整布局并点击"完成并返回 AI"，然后返回结构化反馈（批注文字、坐标、布局变化；视频还包括每帧时间戳）。视频可播放、拖动时间轴并暂停后逐帧标注。此调用会阻塞直到用户提交、取消或超时（默认 1800 秒）。同一时刻只支持一个标注会话：已有会话进行中时再次调用会返回 busy（退出码 4），请先让用户处理未保存文档、截图或进行中的会话。取消或超时不算收到反馈，不要重试覆盖。${FEEDBACK_NOTE}`,
+    description: `发起一次 EditHere 标注会话：打开指定图片、视频或项目，等待用户写批注、调整布局并点击"完成并返回 AI"，然后返回结构化反馈（批注文字、坐标、布局变化；视频还包括每帧时间戳）。视频可播放、拖动时间轴并暂停后逐帧标注。此调用会阻塞直到用户提交、取消或超时（默认 1800 秒）。同一时刻只支持一个标注会话：已有会话进行中时再次调用会返回 busy（退出码 4），请先让用户处理未保存文档或进行中的会话。取消或超时不算收到反馈，不要重试覆盖。${FEEDBACK_NOTE}`,
     inputSchema: {
       type: 'object',
       required: ['imagePath'],
@@ -859,10 +853,6 @@ async function toolCall(name, args, notifyProgress) {
       const invalid = requirePathArg(p);
       if (invalid) return invalid;
       const r = await runCli(['open', p.imagePath]);
-      return cliResultToContent(r);
-    }
-    case 'edithere_capture': {
-      const r = await runCli(['capture']);
       return cliResultToContent(r);
     }
     case 'edithere_annotate': {

@@ -44,7 +44,7 @@ if (-not (Test-Path -LiteralPath $EditHereCli -PathType Leaf)) {
 
 macOS 使用已记录的完整路径、`EDITHERE_CLI`、PATH 中的 `edithere-cli`，或 `/Applications/EditHere.app/Contents/MacOS/edithere-cli`、`~/Applications/EditHere.app/Contents/MacOS/edithere-cli`。其他位置也可使用，但须保留完整 `.app`，不要长期依赖临时挂载的 DMG。
 
-Windows 安装器默认提供加入 PATH 的选项，安装后新终端和 Agent 才能读取更新的环境；当前会话和免安装版可一直使用完整路径。保留同目录的 GUI、DLL 与插件。先确认当前版本的 `--help`；找不到时报告检查过的位置，不将旧版 GUI 可执行文件当作 CLI。用户请求安装或配置时，按[AI 配置指南](https://github.com/Inginnng/EditHere/blob/codex/native/docs/AI-SETUP.md)补齐程序与 skill；普通标注任务不默认重新安装程序。
+Windows 安装器默认提供加入 PATH 的选项，安装后新终端和 Agent 才能读取更新的环境；当前会话和免安装版可一直使用完整路径。保留同目录的 GUI、DLL 与插件。先确认当前版本的 `--help`；找不到时报告检查过的位置，不将旧版 GUI 可执行文件当作 CLI。用户请求安装或配置时，按[AI 配置指南](https://github.com/yyyzl/EditHere/blob/codex/annotation-whiteboard/docs/AI-SETUP.md)补齐程序与 skill；普通标注任务不默认重新安装程序。
 
 ## 版本检查
 
@@ -57,19 +57,19 @@ Windows 安装器默认提供加入 PATH 的选项，安装后新终端和 Agent
 | 0.9.6 – 0.9.7 | 通信端点名与桌面程序不一致，见「选择桌面执行环境」 |
 | 0.9.0 及以上 | 反馈使用 `objects` 结构；更早版本用 `annotations` + `changes` |
 
-只做图片与项目标注时 0.9.8 及以上即可，涉及视频时必须 0.10.0 及以上。`status` 响应里的 `version` 是 EditHere 程序自身的版本，与 `--version` 不一致时按**较低**的一方判断可用能力——两者来自同一个包，出现差异通常说明 PATH 或默认安装目录里还有另一份旧程序。版本不足时告知用户升级（<https://github.com/Inginnng/EditHere/releases/latest>），不要改用另一份同名程序，也不要改动全局环境。
+只做图片与项目标注时 0.9.8 及以上即可，涉及视频时必须 0.10.0 及以上。`status` 响应里的 `version` 是 EditHere 程序自身的版本，与 `--version` 不一致时按**较低**的一方判断可用能力——两者来自同一个包，出现差异通常说明 PATH 或默认安装目录里还有另一份旧程序。版本不足时告知用户升级（<https://github.com/yyyzl/EditHere/releases/latest>），不要改用另一份同名程序，也不要改动全局环境。
 
 ## 选择桌面执行环境
 
-Windows 的 `status`、`open`、`capture`、`annotate` 需要连接当前登录用户的桌面程序。已知当前 Agent 使用受限沙箱时，从第一次调用就选择工具提供、允许访问该桌面的执行方式，避免先在沙箱内启动一个用户看不到的窗口。Codex 的 `exec_command` 若提供 `sandbox_permissions`，可对这次具体桌面命令使用 `require_escalated` 并说明用途；仍遵守工具实际审批，用户要求标注不等于审批一定通过。其他 Agent 使用其对应的受控桌面入口。不要改全局沙箱设置或让应用自行提权。`--help`、`--version`、离线 `export` 不需要桌面连接。
+Windows 的 `status`、`open`、`annotate` 需要连接当前登录用户的桌面程序。已知当前 Agent 使用受限沙箱时，从第一次调用就选择工具提供、允许访问该桌面的执行方式，避免先在沙箱内启动一个用户看不到的窗口。Codex 的 `exec_command` 若提供 `sandbox_permissions`，可对这次具体桌面命令使用 `require_escalated` 并说明用途；仍遵守工具实际审批，用户要求标注不等于审批一定通过。其他 Agent 使用其对应的受控桌面入口。不要改全局沙箱设置或让应用自行提权。`--help`、`--version`、离线 `export` 不需要桌面连接。
 
 如果工具在创建进程前报沙箱错误，尚未得到 EditHere 的状态；不能据此说程序未启动。已有 0.8.20 可能把无法连接误报为 `running:false` 或 `unavailable`；先按已知执行环境判断，不以“没有反馈文件”推断启动失败。
 
-0.9.6 与 0.9.7 的命令行按自己的程序名推算通信端点，与桌面程序使用的名字不同：桌面程序在运行，`status` 也返回 `running:false`，`open`、`capture`、`annotate` 报 `startup_timeout`。核对版本后升级到 0.9.8，不要循环重启桌面程序。
+0.9.6 与 0.9.7 的命令行按自己的程序名推算通信端点，与桌面程序使用的名字不同：桌面程序在运行，`status` 也返回 `running:false`，`open`、`annotate` 报 `startup_timeout`。核对版本后升级到 0.9.8，不要循环重启桌面程序。
 
 ## 收集一次反馈
 
-1. 取得本次任务对应的截图、设计图或视频，保持原始像素尺寸，并使用绝对路径。已有图片或视频无需再截屏；CLI `capture` 只唤起截图，不等待用户反馈。
+1. 取得本次任务对应的截图、设计图或视频，保持原始像素尺寸，并使用绝对路径。从用户提供的图片、剪贴板或文件准备输入；白板不提供系统截图。
 2. 为本次会话创建独立输出目录或唯一文件名。**输出文件必须尚不存在，父目录必须存在**；保留用户已有文件。示例：
 
    ```powershell
@@ -90,14 +90,13 @@ Windows 的 `status`、`open`、`capture`、`annotate` 需要连接当前登录�
 ```text
 edithere-cli status
 edithere-cli open <image-video-or-project>
-edithere-cli capture
 edithere-cli export <image-video-project-or-feedback> --output <new-feedback.json> [--no-image]
 edithere-cli annotate <image-video-or-project> --output <new-feedback.json> [--no-image] [--timeout <seconds>]
 ```
 
 `status` 不启动 GUI。0.8.21 起仅在两个桌面接口都明确不存在时返回 `ok:true,running:false`。`desktop_access_required`（退出码 8）表示桌面访问受限；`connection_error` 表示其他连接异常，两者的 `running:null` 均表示未知，不能当作 false。若首次调用的执行环境不合适，且请求尚未受理，可通过获准的桌面入口重试同一次请求；没有该入口或审批被拒绝时，说明具体限制并停止依赖操作。`startup_failed` / `startup_timeout` 才表示启动动作失败 / 接口未及时就绪，结合 `connection` 诊断处理，不循环重启。
 
-`open` / `capture` 成功仅表示请求被受理，不能替代等待用户完成的 `annotate`。已有 `.edithere` 项目、图片或有效反馈 JSON 可直接 `export`，无需发起新的标注会话。成功的 `annotate` / `export` 响应含 `command`、绝对路径 `output`、批注数量 `annotations` 和 `imageIncluded`；它是结果回执，反馈正文在输出文件中。默认反馈包含原图；仅在能保证读取方同时拿到对应原图时使用 `--no-image`。
+`open` 成功仅表示请求被受理，不能替代等待用户完成的 `annotate`。已有 `.edithere` 项目、图片或有效反馈 JSON 可直接 `export`，无需发起新的标注会话。成功的 `annotate` / `export` 响应含 `command`、绝对路径 `output`、批注数量 `annotations` 和 `imageIncluded`；它是结果回执，反馈正文在输出文件中。默认反馈包含原图；仅在能保证读取方同时拿到对应原图时使用 `--no-image`。
 
 `open` 与 `annotate` 接受图片（PNG/JPEG/WebP/BMP）、视频（MP4/MOV/WebM 等）和 `.edithere` 项目（含视频项目）。视频在 EditHere 中播放，用户暂停到目标画面后批注；同一个位置在不同时间点的意见分别保留，不会合并。视频项目的 `export` 回执还含帧数 `frames` 与 `schemaVersion`（`video-feedback-1`），`annotations` 是所有帧的批注总数。
 

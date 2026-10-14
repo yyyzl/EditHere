@@ -114,8 +114,8 @@ def version(root: Path) -> str:
 
 def revision(root: Path) -> tuple[str, bool]:
     try:
-        commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True, stderr=subprocess.DEVNULL).strip()
-        dirty = bool(subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=normal"], cwd=root, text=True).strip())
+        commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True, encoding="utf-8", stderr=subprocess.DEVNULL).strip()
+        dirty = bool(subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=normal"], cwd=root, text=True, encoding="utf-8").strip())
         return commit, dirty
     except (OSError, subprocess.CalledProcessError):
         return "source-tree", True
@@ -233,7 +233,7 @@ def write_zip(file: Path, entries: dict[str, Path | str]) -> None:
 
 def build_web(root: Path, node: str = "node") -> None:
     """Regenerate the offline app and refuse to ship a stale MCP bundle."""
-    subprocess.run([node, str(root / "web/build.cjs")], cwd=root, check=True, stdout=subprocess.PIPE, text=True)
+    subprocess.run([node, str(root / "web/build.cjs")], cwd=root, check=True, stdout=subprocess.PIPE, text=True, encoding="utf-8")
     for name in (*WEB_RUNTIME, *WEB_GUIDES):
         if not (root / "web" / name).is_file():
             raise ValueError(f"Web runtime file missing: {name}")

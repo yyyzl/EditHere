@@ -49,14 +49,13 @@ int main(int argc, char **argv) {
                   "  edithere-cli --help | --version\n"
                   "  edithere-cli status\n"
                   "  edithere-cli open <image-video-or-project>\n"
-                  "  edithere-cli capture\n"
                   "  edithere-cli export <project> --output <new.json> [--no-image]\n"
                   "  edithere-cli annotate <image-video-or-project> --output <new.json> [--no-image] [--timeout <seconds>]\n\n"
                   "annotate waits for the user to finish in EditHere (default timeout 1800s; range 1..86400).\n"
                   "Feedback embeds the image by default. Output must not exist; its parent must exist.\n"
                   "Video projects export video-feedback-1: timestamped frames and an object index linked by frameId.\n"
                   "Source videos stay referenced by path; --no-image omits all embedded frame screenshots.\n"
-                  "open/capture only acknowledge acceptance; status never starts the app.\n"
+                  "open only acknowledges acceptance; status never starts the app.\n"
                   "Results are one UTF-8 JSON object on stdout. No feedback file is written on cancel/timeout.\n"
                   "Exit codes: 0 success, 2 arguments/protocol, 3 unavailable, 4 busy, 5 I/O, 6 cancelled, 7 timeout, 8 desktop access required.");
         return 0;
@@ -64,7 +63,7 @@ int main(int argc, char **argv) {
     if (args == QStringList{"--version"}) { std::puts("EditHere " EDITHERE_VERSION); return 0; }
     const auto command = args.takeFirst();
     const bool withPath = command == "open" || command == "export" || command == "annotate";
-    if (!withPath && command != "status" && command != "capture")
+    if (!withPath && command != "status")
         return printResult(agentError("invalid_arguments", "Unknown command. Run edithere-cli --help."));
     QString input, output;
     bool embed = true;

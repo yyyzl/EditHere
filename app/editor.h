@@ -73,7 +73,6 @@ class Editor final : public QWidget {
         return layoutCanvas_;
     }
   signals:
-    void captureRequested();
     void agentFinishRequested();
     void agentCancelRequested();
     void guideDismissed();

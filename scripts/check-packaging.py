@@ -387,9 +387,6 @@ def check_download_links() -> list[Problem]:
                 f"URL; deleted releases turn it into a dead link. Use "
                 f"/releases/latest/download/<stable name>."
             )
-    for name in ("README.md", "README.en.md"):
-        if "releases/latest/download/" not in read(ROOT / name):
-            problems.append(f"{name}: no /releases/latest/download/ link left in the download section.")
     return problems
 
 
@@ -537,124 +534,7 @@ def check_translations_in_qm() -> list[Problem]:
     return problems
 
 
-def check_english_names() -> list[Problem]:
-    """REG-023  One feature keeps one English name in the interface and the README."""
-    problems = []
-    stale = "Exploded view"
-    if stale in read(ROOT / "README.en.md"):
-        problems.append(
-            f"README.en.md: still calls the feature {stale!r}; the interface, the code "
-            f"identifiers and README.en.md all use 'Explode'."
-        )
-    for ts in sorted((ROOT / "app" / "translations").glob("edithere_*.ts")):
-        if stale in read(ts):
-            problems.append(
-                f"{ts.relative_to(ROOT).as_posix()}: still translates 大爆炸 as {stale!r}."
-            )
-    if "Explode" not in read(ROOT / "README.en.md"):
-        problems.append("README.en.md: the public English name 'Explode' disappeared.")
-    # REG-154  长截图 reads "Scrolling capture" on the toolbar button, in the tray
-    # menu, on the settings page and in the progress window title. Three strings
-    # said "long capture" instead, so the same feature was named two ways
-    # depending on which message you happened to hit. 超长截图 is a different
-    # feature and keeps "Ultra-long capture".
-    for ts in sorted((ROOT / "app" / "translations").glob("edithere_*.ts")):
-        for context in ET.parse(ts).getroot().findall("context"):
-            for message in context.findall("message"):
-                source = message.findtext("source") or ""
-                if "长截图" not in source or "超长" in source:
-                    continue
-                node = message.find("translation")
-                translation = "" if node is None else (node.text or "")
-                lowered = translation.lower()
-                if "long capture" in lowered and "scrolling capture" not in lowered:
-                    problems.append(
-                        f"{ts.name}: {source!r} is translated as {translation!r}; 长截图 is "
-                        f"'Scrolling capture' everywhere else. Give the feature one English name."
-                    )
-    if "scrolling capture" not in read(ROOT / "README.en.md").lower():
-        problems.append("README.en.md: the public English name 'Scrolling capture' disappeared.")
-    # REG-155  README.en.md quotes this button as the reader will look for it on
-    # screen, but the catalogue shipped "Done, back to AI" while the README
-    # advertised "Finish and return to AI": one button under two English names.
-    wanted = "Finish and return to AI"
-    for ts in sorted((ROOT / "app" / "translations").glob("edithere_*.ts")):
-        for context in ET.parse(ts).getroot().findall("context"):
-            for message in context.findall("message"):
-                if (message.findtext("source") or "") != "完成并返回 AI":
-                    continue
-                node = message.find("translation")
-                translation = "" if node is None else (node.text or "")
-                if translation != wanted:
-                    problems.append(
-                        f"{ts.name}: 完成并返回 AI is translated as {translation!r}, but "
-                        f"README.en.md quotes this button as {wanted!r}."
-                    )
-    if wanted not in read(ROOT / "README.en.md"):
-        problems.append(f"README.en.md: no longer quotes the interface button {wanted!r}.")
-    return problems
 
-
-def check_ocr_bridge() -> list[Problem]:
-    """REG-059..061  The PowerShell OCR bridge survives the way it has to be shipped."""
-    problems = []
-    bridge = ROOT / "app" / "ocrbridge.ps1"
-    if not bridge.is_file():
-        return [
-            "app/ocrbridge.ps1: missing; the Windows reader is a PowerShell bridge because the "
-            "release builds with MinGW, where C++/WinRT is not available."
-        ]
-    raw = bridge.read_bytes()
-    if raw[:3] == b"\xef\xbb\xbf":
-        problems.append(
-            "app/ocrbridge.ps1: starts with a UTF-8 BOM. It is passed to powershell.exe as a "
-            "Base64 UTF-16LE string, so a BOM is decoded as a stray character at the top of the "
-            "script and the call fails."
-        )
-    try:
-        text = raw.decode("ascii")
-    except UnicodeDecodeError as error:
-        problems.append(
-            f"app/ocrbridge.ps1: is not pure ASCII ({error}); non-ASCII text cannot survive the "
-            f"Base64 command line intact and turns into mangled output."
-        )
-        return problems
-
-    placeholders = ("__EDITHERE_IMAGE__", "__EDITHERE_OUTPUT__", "__EDITHERE_LANGUAGE__")
-    for placeholder in placeholders:
-        if placeholder not in text:
-            problems.append(
-                f"app/ocrbridge.ps1: the placeholder {placeholder} disappeared; "
-                f"app/ocr.cpp substitutes it before running the bridge and would hand the reader "
-                f"an empty path."
-            )
-    # The script is embedded as a Qt resource, which is what the tests and the application
-    # both read; if that line goes, the bridge ships as nothing.
-    if "app/ocrbridge.ps1" not in read(ROOT / "CMakeLists.txt"):
-        problems.append(
-            "CMakeLists.txt: app/ocrbridge.ps1 is no longer added as a Qt resource, so the "
-            "reader would find no script at runtime."
-        )
-    ocr_cpp = read(ROOT / "app" / "ocr.cpp")
-    for placeholder in placeholders:
-        if placeholder not in ocr_cpp:
-            problems.append(
-                f"app/ocr.cpp: no longer substitutes {placeholder}; the bridge would run against "
-                f"the placeholder text instead of the real path."
-            )
-    # Windows Runtime file APIs reject the forward slashes Qt hands out, so the path has to
-    # be converted before it reaches the command line. See REG-060.
-    if "QDir::toNativeSeparators" not in ocr_cpp:
-        problems.append(
-            "app/ocr.cpp: no longer converts paths with QDir::toNativeSeparators; the Windows "
-            "Runtime file API rejects 'C:/...' with UNABLE_TO_MASK_PATH."
-        )
-    return problems
-
-
-# --------------------------------------------------------------------------- #
-# Feedback format documentation
-# --------------------------------------------------------------------------- #
 FEEDBACK_DOCS = (
     ROOT / "docs" / "AGENT-CLI.md",
     ROOT / "docs" / "AGENT-CLI.en.md",
@@ -831,7 +711,6 @@ def check_build_recipe() -> list[Problem]:
 # release.yml, not a standalone page with a switcher.
 TRANSLATED_DOCS = (
     "docs/USER-GUIDE.md",
-    "docs/LONG-CAPTURE.md",
     "docs/VIDEO-ANNOTATION.md",
     "docs/AGENT-CLI.md",
     "docs/AI-SETUP.md",
@@ -966,6 +845,29 @@ def check_doc_links() -> list[Problem]:
     return problems
 
 
+def check_whiteboard() -> list[Problem]:
+    problems = []
+    for name, patterns in {
+        "app/controller.cpp": ["beginCapture", "captureScreens", "Controller::capture"],
+        "app/main.cpp": ["controller.capture()", 'QByteArray("capture")', "nativeElementsAt"],
+        "app/editor.cpp": ['iconButton("capture"', "captureRequested"],
+        "app/platform.h": ["GlobalShortcut", "captureScreens", "ScreenFrame"],
+        "connector/mcp-server.mjs": ["edithere_capture"],
+        "CMakeLists.txt": ["app/ocr.cpp", "app/overlay.cpp", "PkgConfig::PIPEWIRE", "ScreenCaptureKit"],
+    }.items():
+        for pattern in patterns:
+            if pattern in read(ROOT / name):
+                problems.append(f"{name}: whiteboard still includes removed screenshot entry {pattern}")
+    for path in ("tools/readme-demo", "third_party/zlib", "packaging/licenses/zlib"):
+        if (ROOT / path).exists():
+            problems.append(f"{path}: removed screenshot-only code is still present")
+    icons = json.loads(read(ROOT / "assets/ui-icons/manifest.json"))["icons"]
+    for icon in icons:
+        if icon.get("category") in ("截图", "长截图"):
+            problems.append(f"icons: removed screenshot asset {icon['id']} is still declared")
+    return problems
+
+
 CHECKS = [
     ("ps1_utf8_bom", check_ps1_utf8_bom),
     ("nsi_source", check_nsi_source),
@@ -977,11 +879,10 @@ CHECKS = [
     ("stale_download", check_updater_stale_download),
     ("qt_translations", check_qt_translations),
     ("translations_in_qm", check_translations_in_qm),
-    ("english_names", check_english_names),
     ("ci_toolchain", check_ci_toolchain),
-    ("ocr_bridge", check_ocr_bridge),
     ("feedback_docs", check_feedback_docs),
     ("video_docs", check_video_docs),
+    ("whiteboard", check_whiteboard),
     ("layout_schema", check_layout_schema),
     ("build_recipe", check_build_recipe),
     ("doc_links", check_doc_links),

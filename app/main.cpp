@@ -50,21 +50,6 @@ int main(int argc, char **argv) {
     if (dpiFunction)
         dpiFunction(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 #endif
-    if (argc >= 4 && QByteArray(argv[1]) == "--inspect") {
-        QCoreApplication app(argc, argv);
-        bool xOk = false, yOk = false;
-        int x = QString::fromLocal8Bit(argv[2]).toInt(&xOk), y = QString::fromLocal8Bit(argv[3]).toInt(&yOk);
-        if (!xOk || !yOk)
-            return 2;
-        qint64 excluded = argc >= 5 ? QString::fromLocal8Bit(argv[4]).toLongLong() : 0;
-        QJsonArray result;
-        for (const auto &c : nativeElementsAt({x, y}, excluded))
-            result.append(QJsonObject{{"bounds", rectJson(c.bounds)}, {"target", c.target}});
-        QByteArray output = QJsonDocument(result).toJson(QJsonDocument::Compact);
-        std::fwrite(output.constData(), 1, size_t(output.size()), stdout);
-        return 0;
-    }
-
     initializeLaunchAtLoginDetection();
     EditHereApplication app(argc, argv);
     app.setApplicationName("EditHere");
@@ -96,10 +81,16 @@ int main(int argc, char **argv) {
         QMessageBox::critical(nullptr, "EditHere", QCoreApplication::translate("h2d", "无法创建程序数据目录，请检查当前用户的目录权限。"));
         return 2;
     }
-    QLockFile lock(QDir(state).filePath("native.lock"));
+    QLockFile lock(QDir(state).filePath("whiteboard.lock"));
     lock.setStaleLockTime(0);
     const QString serverName = legacyDesktopServerName();
     const QStringList args = app.arguments();
+    for (const auto &argument : args.mid(1))
+        if (argument.startsWith("--") && argument != "--demo" && argument != "--autostart" &&
+            argument != "--agent-start" && argument != "--quit") {
+            std::fprintf(stderr, "Unknown option: %s\n", qPrintable(argument));
+            return 2;
+        }
     const bool agentStart = args.contains("--agent-start");
     const bool background = args.contains("--autostart") || agentStart;
     QJsonArray screens;
@@ -174,7 +165,7 @@ int main(int argc, char **argv) {
         QLocalSocket socket;
         socket.connectToServer(serverName);
         if (socket.waitForConnected(800)) {
-            socket.write(path.isEmpty() ? QByteArray("capture") : path.toUtf8());
+            socket.write(path.isEmpty() ? QByteArray("activate") : path.toUtf8());
             socket.flush();
             if (socket.bytesToWrite() && !socket.waitForBytesWritten(500)) {
                 diagnostics::write(diagnostics::Level::Error, "startup.forward", socket.errorString());
@@ -203,15 +194,14 @@ int main(int argc, char **argv) {
     QObject::connect(&server, &QLocalServer::newConnection, &app, [&] {
         while (auto socket = server.nextPendingConnection()) {
             receiveDesktopRequest(*socket, controller, [&controller](const QString &text) {
-                if (text == "capture") controller.capture();
+                if (text == "activate") controller.activate();
                 else if (text == "quit") controller.quit();
                 else if (!text.isEmpty()) controller.start(false, text);
             });
         }
     });
     QTimer::singleShot(0, &app, [&] {
-        controller.start(args.contains("--demo"), path, background || wasLaunchedAtLogin(), !agentStart && !hasSeenGuide());
-        if (args.contains("--capture")) controller.capture();
+        controller.start(args.contains("--demo"), path, background || wasLaunchedAtLogin());
     });
     const int exitCode = app.exec();
     diagnostics::write(diagnostics::Level::Info, "startup.exit", "Desktop event loop exited", {{"exitCode", exitCode}});

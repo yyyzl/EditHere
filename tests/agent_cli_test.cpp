@@ -37,9 +37,6 @@ class AgentCliTests : public QObject {
     static QString isolatedSocketName() { return "eh-" + uniqueId(); }
     static AppSettings quietSettings() {
         auto settings = defaultSettings();
-        settings.shortcuts["capture"] = {};
-        settings.shortcuts["annotate"] = {};
-        settings.captureOnStartup = false;
         settings.checkUpdatesOnStartup = false;
         return settings;
     }
@@ -252,6 +249,9 @@ class AgentCliTests : public QObject {
         const auto guiState = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
         const auto guiAgent = agentServerName();
         const auto guiDesktop = legacyDesktopServerName();
+        // 独立通道避免仍在托盘运行的上游截图版接管白板或 CLI。
+        QVERIFY(guiAgent.startsWith("EditHere-wb-agent-v1-"));
+        QVERIFY(guiDesktop.startsWith("EditHere-wb-native-"));
         QCoreApplication::setApplicationName("edithere-cli");
         QCoreApplication::setOrganizationName(QString());
         const auto cliState = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
@@ -322,14 +322,14 @@ class AgentCliTests : public QObject {
         QVERIFY(client.waitForConnected(1000));
         QTRY_VERIFY(server.hasPendingConnections());
         const auto accepted = server.nextPendingConnection();
-        client.write("capture"); client.flush();
+        client.write("activate"); client.flush();
         client.disconnectFromServer();
         // Slow startup can install the handler after the peer has already
         // closed; there will be no second disconnected signal to wait for.
         QTRY_COMPARE(accepted->state(), QLocalSocket::UnconnectedState);
         QStringList requests;
         receiveDesktopRequest(*accepted, *this, [&](const QString &text) { requests.append(text); });
-        QCOMPARE(requests, QStringList{"capture"});
+        QCOMPARE(requests, QStringList{"activate"});
     }
     void invalidDesktopRequestsAreDiscardedAndNextClientWorks_data() {
         QTest::addColumn<QByteArray>("bytes");
@@ -362,9 +362,9 @@ class AgentCliTests : public QObject {
         QLocalSocket good;
         good.connectToServer(name);
         QVERIFY(good.waitForConnected(1000));
-        good.write("capture"); good.flush();
+        good.write("activate"); good.flush();
         good.disconnectFromServer();
-        QTRY_COMPARE(requests, QStringList{"capture"});
+        QTRY_COMPARE(requests, QStringList{"activate"});
     }
     void invalidIpcRequestsDoNotBreakFollowingConnections_data() {
         QTest::addColumn<QByteArray>("bytes");
@@ -497,18 +497,18 @@ class AgentCliTests : public QObject {
         QCOMPARE(agentExitCode(controller.handleAgentRequest({{"command", "open"}, {"input", input}})), 4);
         editor->hide();
     }
-    void unsavedCapturesAndClipboardImagesRejectAgentReplacement() {
+    void unsavedClipboardImagesRejectAgentReplacement() {
         QTemporaryDir directory;
         const auto input = inputProject(directory);
         Controller controller(nullptr, quietSettings(), directory.filePath("settings.ini"));
         auto editor = editorOf(controller);
-        for (const auto &source : QStringList{"screen", "clipboard"}) {
+        for (const auto &source : QStringList{"clipboard"}) {
             QImage image(80, 60, QImage::Format_RGB32); image.fill(Qt::blue);
-            auto current = fromImage(image, source, "Unsaved capture");
+            auto current = fromImage(image, source, "尚未保存的粘贴图片");
             editor->setDocument(current);
             QVERIFY(!editor->document().dirty);
             // Keep the existing manual replacement behavior; only Agent requests
-            // must not silently discard a capture that has no saved project.
+            // Agent 请求不能丢弃尚未保存项目的粘贴图片。
             QVERIFY(editor->allowReplace());
             const auto response = controller.handleAgentRequest({{"command", "open"}, {"input", input}});
             QCOMPARE(agentExitCode(response), 4);

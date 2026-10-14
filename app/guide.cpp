@@ -153,8 +153,8 @@ void GuideOverlay::placeCard() {
     QString body;
     switch (step_) {
     case 0:
-        controls = {"importDocument", "captureImage"};
-        body = tr("点导入打开图片或项目，也可以直接截图。图片还能拖进窗口，或从剪贴板粘贴。");
+        controls = {"importDocument"};
+        body = tr("点导入打开图片或项目，也可以拖入图片，或按 Ctrl / ⌘ + V 粘贴图片。");
         break;
     case 1:
         controls = {"mode_smart"};

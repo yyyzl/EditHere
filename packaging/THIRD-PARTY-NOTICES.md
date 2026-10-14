@@ -1,11 +1,5 @@
 # Third-party components
 
-Long-capture PNG export statically links the unmodified compression-only subset
-of zlib 1.3.2, copyright Jean-loup Gailly and Mark Adler, under the zlib license.
-The license is included in licenses/zlib/LICENSE. The matching source archive is
-https://zlib.net/fossils/zlib-1.3.2.tar.gz; the vendored subset and source checksum
-are recorded in third_party/zlib/README.md in the EditHere source tree.
-
 EditHere uses dynamically linked Qt 6.8 (Qt Core, Gui, Widgets,
 Concurrent, Network, Qt SVG, Qt Image Formats and Qt Multimedia), copyright The Qt Company Ltd. and
 contributors, under LGPL version 3 and the components' applicable licenses.
@@ -59,29 +53,12 @@ Upstream source references:
 System fonts are loaded from the operating system and are not bundled.
 No Snipaste, PixPin or Agentation source code or assets are included.
 
-The Linux preview additionally dynamically links Qt DBus, Qt Wayland and AT-SPI,
-and their runtime dependencies. Distribution copyright and license notices for
-the bundled Linux libraries are included under licenses/linux in the AppImage's
-usr/share/doc/edithere directory. Qt Wayland and SVG source archives are available
-from the same Qt 6.8.3 submodules directory linked above. AT-SPI source is available
-at https://gitlab.gnome.org/GNOME/at-spi2-core ; the Ubuntu package source and exact
-installed version can be obtained through `apt-get source at-spi2-core` and
-`apt-cache policy libatspi2.0-0`. Libraries are dynamically linked and can be
-replaced in an extracted AppImage. No modified third-party library is distributed.
-
-Builds with Wayland long capture additionally dynamically link PipeWire's client
-library (MIT/Expat), copyright Wim Taymans and contributors. PipeWire source and
-component license details are available at https://gitlab.freedesktop.org/pipewire/pipewire
-and https://github.com/PipeWire/pipewire/blob/master/COPYING. Bundled PipeWire
-libraries and their dependencies retain the distribution's component notices
-under licenses/linux. The desktop Portal and PipeWire server are supplied by the
-operating system; they are not included in EditHere's application code.
-
-Linux OCR invokes the separately installed Tesseract executable (Apache-2.0),
-https://github.com/tesseract-ocr/tesseract ; language data is installed by the
-user's package manager and is not bundled. linuxdeploy and its Qt plugin are
-build tools, not application components; their official binaries are pinned
-and SHA-256 verified by scripts/fetch-linuxdeploy.py.
+The Linux builds use Qt's platform and multimedia runtime plugins. Applicable notices
+for bundled system libraries are included under licenses/linux. Qt Wayland and
+SVG sources are available from the Qt submodules references above. Libraries can
+be replaced in an extracted AppImage. No modified third-party library is distributed.
+linuxdeploy and its Qt plugin are build tools; their binaries are pinned and
+SHA-256 verified by scripts/fetch-linuxdeploy.py.
 
 Interface action icons use a pinned subset of Lucide (ISC, with the retained
 Feather MIT notice), plus EditHere-specific derivatives recorded in

@@ -284,7 +284,7 @@ Linux 专项 `linux_platform_tests` 在独立 DBus 会话中覆盖开机启动�
 
 截图不再"松手即批注"：松开鼠标只把选定的区域定下来，选区上方的工具条（批注、识别、贴图、保存、复制）与它右侧的样式列（圆角、阴影/边框、贴图、重置）才是动作的入口。本节记录实现这套流程时踩到的问题。
 
-**长截图实现更新（开发版）**：旧实现于 2026-09-29 移到 `feature/long-capture`。当前 Windows、macOS 和 Linux 后端共用纵向/横向手动采集、选区外遮罩、固定比例预览和原图拼接；Windows、macOS 与 X11 可选自动纵向滚动，Wayland 目前仅手动滚动。稳定帧采样与置信度复核负责匹配，明确勾选自动滚动后才向可验证的锁定目标投递滚轮。下表 **REG-081、REG-101、REG-102、REG-103、REG-104** 保留旧实现的事故记录和历史测试名；当前检查集中于 `scrollstitch_tests`、`scroll_controller_tests`、Windows `scroll_platform_tests`、Linux `linux_platform_tests` 和 `scroll_wayland_tests`，平台条件及尚未完成的实机验收见 [LONG-CAPTURE.md](LONG-CAPTURE.md)。
+**长截图实现更新（开发版）**：旧实现于 2026-09-29 移到 `feature/long-capture`。当前 Windows、macOS 和 Linux 后端共用纵向/横向手动采集、选区外遮罩、固定比例预览和原图拼接；Windows、macOS 与 X11 可选自动纵向滚动，Wayland 目前仅手动滚动。稳定帧采样与置信度复核负责匹配，明确勾选自动滚动后才向可验证的锁定目标投递滚轮。下表 **REG-081、REG-101、REG-102、REG-103、REG-104** 保留旧实现的事故记录和历史测试名；当前检查集中于 `scrollstitch_tests`、`scroll_controller_tests`、Windows `scroll_platform_tests`、Linux `linux_platform_tests` 和 `scroll_wayland_tests`，平台条件及尚未完成的实机验收见 [白板改造说明](../DESIGN.md)。
 
 | 编号 | 现象 | 首现 → 修复 | 根因 | 回归检查 | 状态 |
 | --- | --- | --- | --- | --- | --- |
@@ -378,7 +378,7 @@ Linux 专项 `linux_platform_tests` 在独立 DBus 会话中覆盖开机启动�
 | Web 包可复现 | `.gitattributes` 固定内嵌素材与随包法律文本的行尾（`web/**`、`assets/ui-icons/**`、六份法律文本为 LF，被 base64 内嵌的品牌 SVG 为 CRLF）；`write_zip` 固定条目顺序、时间戳与 `create_system`，避免宿主差异；`python scripts/prepare-distribution.py --web-only` 重建的 `web/EditHere.html` 与提交版逐字节一致，两种 ZIP 在各平台与 CI 同字节（0.11.1 的发布资产已用本机重建复现其 SHA-256） | REG-177 |
 | Web 包可直接安装 | `node scripts/web-package-check.cjs <解压目录\|ZIP> [测试图片]`：只读成品包，校验两种包的布局、release 渠道口径、MCP 清单哈希自洽、技能安装与重复安装拒绝，并以 stdio 复核 `unsupported`/`supported` 两种宿主场景与内嵌 HTML 可读回 | REG-177 |
 
-旧长截图的做法对照过两个开源实现（**该段描述 `feature/long-capture` 的历史方案，当前实现见 [LONG-CAPTURE.md](LONG-CAPTURE.md)**），取舍记在这里：ShareX 的 `ScrollingCaptureManager` 用 `ScrollDelay` 等页面停稳、用 `ScrollMethod`（滚轮/方向键/PageDown/`WM_VSCROLL`）适配不同窗口、并保留"历史最佳匹配"把部分成功标成黄色；deepin-screen-recorder 的 `PixMergeThread` 用 `getTopFixedHigh()`/`getBottomFixedHigh()` 先把固定的顶底栏裁掉再拼接，并用 `cv::matchTemplate` + 0.8 阈值匹配。EditHere 采纳了**固定顶底栏检测**、**抓到帧先确认页面已停稳**、**一次没新内容再补一轮**和**容差阶梯**（等价于 ShareX 的部分成功，用 `partial()` 报告），没有采纳自动回到顶部（`AutoScrollTop` 默认为假，且会把"从这里往下截"变成"从整页开头截"）与多滚动方式（需要平台侧新增按键注入，暂不在范围里）。
+旧长截图的做法对照过两个开源实现（**该段描述 `feature/long-capture` 的历史方案，当前实现见 [白板改造说明](../DESIGN.md)**），取舍记在这里：ShareX 的 `ScrollingCaptureManager` 用 `ScrollDelay` 等页面停稳、用 `ScrollMethod`（滚轮/方向键/PageDown/`WM_VSCROLL`）适配不同窗口、并保留"历史最佳匹配"把部分成功标成黄色；deepin-screen-recorder 的 `PixMergeThread` 用 `getTopFixedHigh()`/`getBottomFixedHigh()` 先把固定的顶底栏裁掉再拼接，并用 `cv::matchTemplate` + 0.8 阈值匹配。EditHere 采纳了**固定顶底栏检测**、**抓到帧先确认页面已停稳**、**一次没新内容再补一轮**和**容差阶梯**（等价于 ShareX 的部分成功，用 `partial()` 报告），没有采纳自动回到顶部（`AutoScrollTop` 默认为假，且会把"从这里往下截"变成"从整页开头截"）与多滚动方式（需要平台侧新增按键注入，暂不在范围里）。
 
 `scripts/check-packaging.py` 不依赖 Qt 与 NSIS（找不到 `makensis` 时只跳过实编译，其余检查照常执行），所以它能在 CI 里跑；`scripts/check-translations.py` 需要 `lupdate`，CI 的精简 Qt 没有 Linguist，因此只在本地 Qt 完整安装时注册为测试。i18n 的工具无关部分（`.ts` ↔ `.qm` 逐条比对）已并入 `check-packaging.py`，保证 CI 也能拦住"改了 `.ts` 忘了 `lrelease`"。
 
@@ -388,3 +388,7 @@ Linux 专项 `linux_platform_tests` 在独立 DBus 会话中覆盖开机启动�
 2. 修复时**同时**补一条会因这个 bug 而复发的自动化检查；优先选仓库内可复现的断言，而不是"我记得改过了"。
 3. 确实无法写成测试的，写进第九节并说明原因，不要留空。
 4. CHANGELOG 里写用户可见的变化，本页写内部原因与护栏。
+
+## WB-001 · 白板启动与截图入口清理
+
+普通启动、再次启动和托盘单击曾触发系统截图。白板版改为激活现有编辑器；没有素材时显示空白工作台。移除屏幕采集、OCR、长截图和贴图模块、全局快捷键以及 CLI / MCP 截图入口，清理旧截图偏好但保留其他设置。`startup_flow_test.cpp` 检查空白启动、重复激活及 AI 会话保护；`settings_test.cpp` 检查旧设置迁移；`connector_test.mjs` 与 `check-packaging.py::check_whiteboard` 检查工具及构建范围；现有 UI、布局和 CLI 测试覆盖图片输入与反馈提交。

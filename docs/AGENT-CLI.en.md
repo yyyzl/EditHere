@@ -2,7 +2,7 @@
 
 [简体中文](AGENT-CLI.md) · **English**
 
-[Back to the product introduction](../README.en.md) · [Let AI install it for you](https://github.com/Inginnng/EditHere/blob/codex/native/docs/AI-SETUP.en.md) · [User guide](USER-GUIDE.en.md) · [Companion AI skill](../skills/edithere/SKILL.md)
+[Back to the product introduction](../README.en.md) · [Let AI install it for you](https://github.com/yyyzl/EditHere/blob/codex/annotation-whiteboard/docs/AI-SETUP.en.md) · [User guide](USER-GUIDE.en.md) · [Companion AI skill](../skills/edithere/SKILL.md)
 
 EditHere provides a local command-line entry point that lets AI open a screenshot for you to annotate. You can write change requests and move or resize components; the command line hands this round's feedback to the AI only after you click “Finish and return to AI” (完成并返回 AI). The image, annotations and export are all handled on your machine; whether the file is later sent to an AI service is decided by the tool that uses it.
 
@@ -15,12 +15,12 @@ The program and the skill solve two separate things: the program opens images, a
 Copy the text below to an AI that can run commands on your machine, and it can complete the setup by following the guide:
 
 ```text
-Follow https://github.com/Inginnng/EditHere/blob/codex/native/docs/AI-SETUP.en.md to set up EditHere and the edithere skill for me.
+Follow https://github.com/yyyzl/EditHere/blob/codex/annotation-whiteboard/docs/AI-SETUP.en.md to set up EditHere and the edithere skill for me.
 Use portable mode: do not run the Windows installer and do not change PATH or startup settings. Reuse the program I have already extracted first; otherwise download and fully extract the official portable archive.
 Record the actual CLI path, verify that the CLI runs and that my current AI tool can find the skill, and tell me how to start annotating.
 ```
 
-The source and release packages are public and can be downloaded directly; an AI that only has a web chat or no local execution permission cannot complete the local setup from this text alone. For the standard installation, see the [AI setup guide](https://github.com/Inginnng/EditHere/blob/codex/native/docs/AI-SETUP.en.md).
+The source and release packages are public and can be downloaded directly; an AI that only has a web chat or no local execution permission cannot complete the local setup from this text alone. For the standard installation, see the [AI setup guide](https://github.com/yyyzl/EditHere/blob/codex/annotation-whiteboard/docs/AI-SETUP.en.md).
 
 ## Find the CLI
 
@@ -58,11 +58,11 @@ If you keep the app in `~/Applications` or another stable location, adjust the p
 
 ## Desktop access for Windows agents
 
-Inside a restricted agent sandbox, a command may fail to reach the EditHere instance of the currently logged-in user, or may launch onto a desktop the user cannot see. For that reason, `status`, `open`, `capture` and `annotate` should be run through the entry point that the agent tool provides and that is permitted to access the current user's desktop. When you already know this isolation exists, choose the right entry point on the very first call; there is no need to manufacture a failure first. If a Codex tool offers `sandbox_permissions`, you may use `require_escalated` for the specific desktop command, respecting its approval result. There is no need to change the global sandbox or the app's permission settings. `--help`, `--version` and offline `export` do not depend on a desktop connection.
+Inside a restricted agent sandbox, a command may fail to reach the EditHere instance of the currently logged-in user, or may launch onto a desktop the user cannot see. For that reason, `status`, `open` and `annotate` should be run through the entry point that the agent tool provides and that is permitted to access the current user's desktop. When you already know this isolation exists, choose the right entry point on the very first call; there is no need to manufacture a failure first. If a Codex tool offers `sandbox_permissions`, you may use `require_escalated` for the specific desktop command, respecting its approval result. There is no need to change the global sandbox or the app's permission settings. `--help`, `--version` and offline `export` do not depend on a desktop connection.
 
 0.8.20 misreported a restricted connection as “not running”, then tried to launch and wait. 0.8.21 keeps the connection error and distinguishes “not running” from “cannot be determined”. When the tool fails before it even creates the command process, that result also cannot tell you whether EditHere is running; the absence of a feedback file only means this round's result has not been obtained yet.
 
-The 0.9.6 and 0.9.7 command lines inferred the communication endpoint from their own program name, which differed from the name used by the desktop app: even with the desktop app running, `status` still returned `running:false`, and `open`, `capture` and `annotate` reported `startup_timeout`. 0.9.8 fixed this. If you hit this combination, check the version and upgrade first rather than repeatedly restarting the desktop app.
+The 0.9.6 and 0.9.7 command lines inferred the communication endpoint from their own program name, which differed from the name used by the desktop app: even with the desktop app running, `status` still returned `running:false`, and `open` and `annotate` reported `startup_timeout`. 0.9.8 fixed this. If you hit this combination, check the version and upgrade first rather than repeatedly restarting the desktop app.
 
 ## Command overview
 
@@ -71,7 +71,6 @@ The 0.9.6 and 0.9.7 command lines inferred the communication endpoint from their
 | `--help` / `--version` | Show the arguments supported by the current version / the version | No |
 | `status` | Query the running and document state without launching the GUI | No |
 | `open <image-video-or-project>` | Open an image, a video or a `.edithere` project (including video projects) | No, it only acknowledges the request |
-| `capture` | Bring up a screen capture | No, it only acknowledges the request |
 | `export <image-video-project-or-feedback> --output <new.json>` | Convert a saved project (including video projects), image or valid feedback JSON into feedback JSON | No |
 | `annotate <image-video-or-project> --output <new.json>` | Open a user annotation session and wait for an explicit submission | **Yes** |
 
@@ -104,7 +103,7 @@ After it runs, the user finishes annotating in EditHere and clicks **“Finish a
 
 When you use an agent tool that returns a background session ID, keep waiting on the same CLI process; do not start `annotate` again just because a single tool wait ended. After a timeout, cancellation or failure, do not read any previous result and do not start a new annotation session automatically. A connection interruption may happen after the file has been written but before the success receipt has returned; first check whether this round's unique output exists and is valid JSON, and confirm whether the user has explicitly submitted, rather than treating an unclear result as a failure and retrying blindly.
 
-An existing unsaved document, an in-progress capture or an annotation session may make a request return `busy`. When a desktop instance is detected but the agent interface is unavailable, the response is `agent_endpoint_unavailable`; this may mean it is still initialising or the versions do not match. Check the version, and if a restart is needed, save your work first and quit cleanly from the tray. Do not force-kill the process or overwrite files to work around these states.
+An existing unsaved document or an annotation session may make a request return `busy`. When a desktop instance is detected but the agent interface is unavailable, the response is `agent_endpoint_unavailable`; this may mean it is still initialising or the versions do not match. Check the version, and if a restart is needed, save your work first and quit cleanly from the tray. Do not force-kill the process or overwrite files to work around these states.
 
 ## Export a saved project
 
@@ -124,7 +123,7 @@ The success receipt for `annotate` / `export` looks like this; `annotations` is 
 {"ok":true,"command":"annotate","output":"C:/work/feedback-unique.json","annotations":2,"imageIncluded":true}
 ```
 
-The responses for `open` / `capture` carry `accepted: true`, which only means the request was accepted; `open` also returns the absolute path `input`. A common failure response:
+The responses for `open` carry `accepted: true`, which only means the request was accepted; `open` also returns the absolute path `input`. A common failure response:
 
 ```json
 {"ok":false,"error":{"code":"busy","message":"..."}}
@@ -132,7 +131,7 @@ The responses for `open` / `capture` carry `accepted: true`, which only means th
 
 | Exit code | Meaning |
 | --- | --- |
-| `0` | The command succeeded; for `open` / `capture` it only means the request was accepted |
+| `0` | The command succeeded; for `open` it only means the request was accepted |
 | `2` | Argument or communication-protocol error |
 | `3` | The app or connection is unavailable |
 | `4` | The current state is busy |
@@ -145,7 +144,7 @@ Only when both the agent interface and a compatible desktop interface are defini
 
 `agent_endpoint_unavailable` (exit code 3) means a desktop instance was found but the agent interface is not yet available; `startup_failed` / `startup_timeout` (exit code 3) mean, respectively, that the launch action failed and that the interface did not become ready in time after launching. When you run into an access restriction, go through the permitted desktop entry point the tool supports; if there is no such entry point or permission is not granted, state the limitation and do not automatically loosen permissions or launch repeatedly.
 
-At runtime it also returns the document, capture and session state `hasDocument`, `dirty`, `capturing` and `agentSession`, along with `executable`, `startupRegistered` and `startupNotice`. This information does not mean a round of feedback has been submitted; the normal flow still has to wait for the corresponding `annotate` success receipt.
+At runtime it also returns the document and session state `hasDocument`, `dirty` and `agentSession`, along with `executable`, `startupRegistered` and `startupNotice`. This information does not mean a round of feedback has been submitted; the normal flow still has to wait for the corresponding `annotate` success receipt.
 
 A missing input file, an output that already exists, or a write failure returns `io_error` (exit code 5); invalid arguments return `invalid_arguments` (exit code 2). Fix the specific error first, then retry with a new output path; for a connection interruption with an unclear result, check this round's state first.
 

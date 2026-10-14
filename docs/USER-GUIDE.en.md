@@ -1,5 +1,8 @@
 # EditHere: User guide
 
+> Local whiteboard variant: launch to an empty workspace, then paste, drop, or open an image. System screenshots, OCR, scrolling capture, pinning, and global shortcuts are removed.
+
+
 [简体中文](USER-GUIDE.md) · **English**
 
 [Back to the product overview](../README.en.md) · [AI and the command line](AGENT-CLI.en.md) · [Changelog](../CHANGELOG.md) · [Development notes](DEVELOPMENT.en.md)
@@ -9,7 +12,6 @@ This page covers **0.11.1** and describes capture, video annotation, comments, c
 ## Contents
 
 - [Running and updating](#running-and-updating)
-- [Capture](#capture)
 - [Annotation editing](#annotation-editing)
 - [Video annotation](#video-annotation)
 - [Explode](#explode)
@@ -21,107 +23,7 @@ This page covers **0.11.1** and describes capture, video annotation, comments, c
 
 ## Running and updating
 
-### Installation
-
-For the first upgrade after the rename, download the new package directly from the [latest release page](https://github.com/Inginnng/EditHere/releases/latest) after quitting the old version from the tray. Legacy project formats are no longer supported — use `.edithere` projects. If launch at login reports an old path, keep the startup option selected and save to refresh it; you do not need to close and reopen it. Saving a project once in the new app registers the `.edithere` file association. Older versions' automatic update checks may not recognize the new repository URL.
-
-On Windows the [installer](https://github.com/Inginnng/EditHere/releases/latest/download/EditHere-win-x64-setup.exe) is recommended (a local build is named like `dist/EditHere-<version>-win-x64-setup.exe`; releases use a single name without the version). Release asset names do not include a version, so the link always points to the latest version. It installs to `%LOCALAPPDATA%\Programs\EditHere` for the current user only, with no administrator privileges. The installer creates a Start menu entry and an uninstaller and registers the `.edithere` project association; on the components page you can choose launch at login, add to PATH and a desktop shortcut. A new installation selects launch at login and PATH by default; upgrades preserve the startup option according to the existing per-user startup registration. Reopen your terminal and AI tools after installation so they can pick up the new PATH.
-
-Windows [portable ZIP](https://github.com/Inginnng/EditHere/releases/latest/download/EditHere-win-x64.zip): a local build is named like `dist/EditHere-<version>-win-x64.zip`. Extract the entire archive and run `EditHere.exe`, keeping the DLLs and plugin folders alongside it; Qt, Python, Node and .NET do not need to be installed. The portable version does not add itself to PATH; run the CLI with its full path.
-
-The Windows installer is not yet code-signed. Download it from this repository's Releases and verify the [application package SHA-256 checksums](https://github.com/Inginnng/EditHere/releases/latest/download/SHA256SUMS.txt). In the download folder, open PowerShell and run `Get-FileHash .\EditHere-win-x64-setup.exe -Algorithm SHA256` to compute the installer's hash and compare it with the matching entry in the file.
-
-On macOS, download the [universal DMG](https://github.com/Inginnng/EditHere/releases/latest/download/EditHere-macos-universal.dmg) and drag `EditHere.app` to the **Applications** entry inside. The CLI is at `EditHere.app/Contents/MacOS/edithere-cli`. Your first capture needs Screen Recording permission, and system element detection needs Accessibility permission; it has not yet been acceptance-tested on a real Mac or notarised by Apple.
-
-On Windows you can remove the installed version through the system's “Installed apps” or the uninstall entry in the Start menu. Uninstalling removes only the files installed with the package and their registrations, keeping your settings and projects; you do not need to delete that data to update.
-
-A first installation offers location and component choices. When EditHere is installed, the installer shows “Update existing version”, uses its recorded location and options, and proceeds directly to update progress after confirmation. Reinstalling the same version follows this flow and keeps settings and projects. A package older than the installed version reports that a newer version is already installed.
-
-If EditHere is running when you install or upgrade, the installer first asks the running instance to quit on its own (unsaved annotations still go through the app's own save prompt, and the window comes to the foreground automatically), then waits for the process to end before writing files; a silent install shows no prompt. You can also run `EditHere.exe --quit` to ask a running instance to exit through the normal flow.
-
-### In-app updates
-
-The Windows installer replaces program files according to their manifest. The downloaded installer and user files stay in place, including when the installer is inside the destination. Failure messages identify the failed step and preserve recovery files.
-
-In **Settings → About and updates**, click **“Check for updates”**, or right-click the tray icon and choose **“Check for updates…”**. When Windows finds a compatible new version it shows **“Update now”**. After downloading, SHA-256 verification and confirmation of unsaved edits, the app waits for the installer to check requirements and report readiness before closing for the update. Preparation failures, cancellation and timeouts keep the current app running. The installed and portable versions share the same NSIS installer; portable updates do not register an installation, modify PATH or create shortcuts. A portable update requires a target release of at least 0.9.9; when no compatible package exists, and on macOS, the button opens the release page for a manual download.
-
-An update prepares new program files and backs up old files individually; it needs directory write permission and extra disk space. Before commit, failures attempt to restore program files, registration and shortcuts. A standalone installer first recovers interrupted work. After success, obsolete program files are reclaimed according to their manifest; user files stay in place and modified old program files remain in the backup. Results and logs live in `%LOCALAPPDATA%\EditHere\Installer`. The next launch reports a matching failed update with diagnostic paths. **“Check for updates on launch”** is enabled by default; an existing disabled preference is preserved. The app checks asynchronously after its first interactive launch and offers **“Update now / Skip”** if a newer version exists. Skipping suppresses further reminders for that run. No dialog appears when there is no update or the check fails. Capture, AI sessions, the guide and other dialogs defer the reminder; background launches wait until manual use. You can disable the check in Settings.
-
-Update checks query stable releases on both [GitHub](https://github.com/Inginnng/EditHere/releases) and [Gitee](https://gitee.com/InnGing/EditHere/releases) and choose the newer version by version number. For the same version, a source with a compatible package and its SHA-256 checksum file is preferred; the package and checksum come from the same source. If one source fails, the other source's result remains usable and the app reports that the check is incomplete; if both fail, it shows the specific errors. Your capture and annotation data are not uploaded with an update.
-
-Older clients may not recognize the new download address after the rename, so for the first upgrade after the rename use the download links above for a manual download.
-
-### Launch and tray
-
-The first manual launch shows the guide; after you finish or skip it, it no longer appears automatically. Afterwards press **Alt + Shift + 2** or click the tray icon to capture. A shortcut capture does not simulate key presses or activate a temporary window; the tray entry closes menus and pop-ups first, then captures the screen. After you cancel, copy or save the capture, the original window is restored. Existing shortcut settings are unchanged and can be restored to defaults in Settings. Only the capture mask stays on top; the editor window is an ordinary application window.
-
-The tray menu, in order, is: **Capture**, **New annotation (empty window)** (both show the current global shortcut on the right), **Open image or project**, a separator, **Settings…**, **Check for updates…**, a separator and **Quit**. On macOS there is also an extra **Grant Accessibility permission** entry for reading system element boundaries; image detection still works without it.
-
-The default shortcuts are listed below; you can change the corresponding key actions in [Settings](#settings).
-
-## Capture
-
-- Hover for smart select; scroll up to choose a larger region and down to choose a smaller one. Every detected box that contains the pointer can be cycled through; they do not have to be parent and child of each other. **The level you scrolled to is remembered**: after switching to “whole row / whole table”, moving the mouse or pressing the arrow keys still keeps that level selected; scroll back to return to the smallest block, and a new capture also starts again from the smallest block. **Fine-tuning with the arrow keys does not change the selected box**: as you nudge the pointer box by box, the selected block stays put and does not shrink into a button or cell inside it. Moving the mouse over a wide range is still smart select — it selects whatever you point at. **The arrow keys move the mouse pointer one step at a time** (one step per press, only in the direction pressed, and an exact step even on a scaled display); the detected box highlight and the magnifier follow it, to line up on a single pixel. This works from the moment you enter capture until the selection is settled.
-- Click a block or drag to draw a box; **releasing the mouse settles the selection**, the capture toolbar appears **above** it and a column of style tools appears to its **right**; when there is not enough room above, the toolbar moves below automatically. Entering annotation is an action on the toolbar (click “Annotate” or press Enter), no longer the default result of releasing the mouse.
-- Once the selection is settled you can still adjust it: drag inside the region to move it, drag a corner to resize, and drag outside to draw a new selection; **the arrow keys move the mouse pointer** (1 pixel at a time, with the magnifier following, to line up on a single pixel), `Shift` + arrow key shrinks 1 pixel from that side, and `Ctrl` + arrow key expands 1 pixel outwards. Esc cancels the capture.
-
-### Capture toolbar
-
-| Action | Default shortcut | Description |
-| --- | --- | --- |
-| Annotate | Enter | Open the annotation editor |
-| Copy image | Ctrl + C | Put the selection (including the chosen corner radius, border and shadow) on the clipboard |
-| Pin to screen | Ctrl + T, Ctrl + 2, P | Pin this block on the screen, **back in the position it came from** — see below |
-| Save image | Ctrl + S | Save as PNG or JPEG |
-| Text recognition | Shift + C, T | Open the recognition result window — see the next section |
-| Scrolling capture (development build) | L | Scroll the page both ways by hand; stitch automatically and show a preview |
-| Pick a colour | C | Shortcut only, with no toolbar button: after picking starts the magnifier follows the mouse, then press C or Ctrl + C to copy the colour value (the reading is also shown beside the magnifier while C is not pressed) |
-| Previous / next capture in history | < / > | Bring up earlier captures without leaving the capture window |
-| Restore last selection | R | Reuse the most recent selection size |
-| More options | H | Open the toolbar menu |
-| Cancel | Esc | Discard this capture |
-
-- On the left of the toolbar, the selection's top-left coordinates and “width × height px” are shown; click it to type an exact size. When the aspect ratio is locked, the height is derived from the ratio.
-- The style column to the right of the selection is: **Rounded corners**, **Shadow / border**, **Reset**. Rounded corners and shadow each open a small panel with sliders; the shadow panel has “Shadow | Border” tabs and an intensity slider (0–100). Once you tick “Set for every capture”, that style is written to the settings and every later capture starts from it. **Pin to screen appears only once, on the toolbar**, and is no longer repeated in the style column.
-- While you drag the selection, a **magnifier** appears beside the pointer, enlarging the area around it many times over. It enlarges **what is on screen**: the blue frame and the darkened surroundings are magnified with it, and the frame is exactly as thick after magnification. The panel also shows pixel coordinates and `RGB` / `HEX` / `HSV` / `HSL` readings. Once the selection is settled, the magnifier and readings stay as long as the mouse is inside the selection, without entering colour picking first. The magnifier automatically avoids the toolbar and the style column.
-- The “More” menu also contains: a fixed aspect ratio (1:1, 4:3, 3:2, 16:9, 9:16 or a custom one such as `21:9`), the text recognition language, capture history (including previous / next), recent selections and a list of the current shortcuts.
-- Rounded corners and border preview on the selection **exactly as they will appear**; copy, save, pin and recognition all use the finished image with these effects. The shadow is **on by default** (medium intensity) and turns off when you drag the intensity slider to 0; it extends the image outwards by the corresponding pixels with a smooth falloff that fades towards the edge, in the interface's accent colour — the blue around the selection — not black. The shadow is **drawn only on pinned images** and is not shown in the capture window: set the intensity and pin the image once to see the effect. Text recognition reads the capture itself, without the shadow's extended edge.
-- The last **20 captures** and **10 selections** are kept across sessions. While capturing, press `H` to pick one of the last 5 captures and open it directly, or press `R` to restore the most recent selection size.
-
-**Pick a colour**: once picking starts the magnifier follows the mouse and reads the colour wherever you point. The panel shows pixel coordinates, a colour swatch and `RGB`, `HEX`, `HSV` and `HSL` forms; `Shift` cycles through the four, and the deepest-coloured one is the one that will be copied. Press `C` or `Ctrl + C` to copy the colour value; a mouse click also copies and ends picking, and `Esc` or the right mouse button ends picking.
-
-**Pinned windows**: you can pin several at once, and each lands by default in the position you just captured.
-
-- **Move**: press and drag in the middle of the image.
-- **Resize**: move the mouse to the image's **edge or corner** and the cursor changes to the matching resize cursor; press and drag to scale it. The wheel also zooms (10%–400%), and `0` fits to screen. Both share the same zoom level, so the wheel does not jump back after a drag.
-- The image's edge is conveyed by the **shadow**, with no extra outline. Once you turn the shadow off in the context menu, there is **no line at all** on the image: it is just a picture sitting on the desktop, and its edge is invisible when the desktop colour is similar. The draggable edges still exist, they are just no longer drawn.
-- **The shadow also shows which one is active**: the selected image's shadow is **blue**; once you click another window it turns **grey**. With several pinned at once you can tell them apart at a glance. An image with the shadow off shows neither colour.
-- `Ctrl + C` copies; **double-click or `Esc` closes**.
-- **Context menu**: the first item is **Annotate** (hand the image to the editor; the shadow is not counted on the canvas), followed by copy image, save image, text recognition, **Turn** (left/right 90°, flip horizontally, flip vertically), **Transparency** (100% / 75% / 50% / 25% / 10%), **Shadow** (toggle at any time), zoom (fit to screen / original size / back to capture position) and close. An image pasted directly from elsewhere has no toggleable shadow and that item is greyed out.
-- An image with a shadow carries the shadow with it, and the transparent margin around it shows the desktop through.
-
-### Opening an empty annotation window directly
-
-An image already on disk does not have to be captured again: press the global shortcut **Alt + Shift + 1**, or choose **“New annotation (empty window)”** in the tray menu, to open the annotation window directly, with “drop or paste an image here” in the middle and an **“Import image or project”** button below. The shortcut also works in other applications; change it or clear it to disable it in **Settings → Shortcuts**. **Drop an image into the window** to start annotating; pasting with `Ctrl + V` works too, and the button lets you choose an image or a project from a file dialog.
-
-If there are unsaved changes when you close the annotation window, it asks “Save the project first?”. This dialog has **“Do not ask again; change this in Settings”**: once ticked, later closes discard unsaved changes directly with no prompt. To change it back, tick “Ask about saving when the annotation window closes” in **Settings → Default behavior**.
-
-### Scrolling capture (development build)
-
-Draw a selection around scrolling content, then click “Scrolling capture” on the toolbar or press `L`. The white selection frame outside the grey mask always marks the region actually captured; by default you scroll slowly up and down inside the frame yourself, and starting from the middle of a page you can scroll up first and then down; revisiting content that was already captured is not stitched twice. The preview to the right of the selection keeps a fixed width and extends up and down as the image grows; once it passes the screen edge it shows the part near the current position and the content never shrinks as the capture grows. A green frame marks the current view; an orange frame appears when a match fails, and scrolling back a little restores it, as does returning to earlier captured content further away. The fixed top and bottom bars are kept once. The menu follows the application theme, existing actions reuse the same icons, and hovering over a button shows its effect and limitations. Stopping the scroll keeps waiting, so capture as far as you want and then click edit, copy, save or pin. The selection should sit inside a single scrolling region, avoiding the browser toolbar and separate sidebars where possible, and avoiding a single scroll that passes a whole screen without overlapping content.
-
-When you want the app to scroll for you, click the mouse icon on the toolbar to turn on “Automatic scrolling”, and you can turn it off at any time to return to manual; the switch is off every time you start a scrolling capture. Automatic mode finishes once it confirms it has reached the end. Clicking the red “Stop” cancels this round's capture and result and removes the thumbnail; clicking again restarts from the current frame. `Esc` or “Close” discards this round and returns to the original selection. When the view keeps changing or the overlap cannot be matched reliably, the capture pauses and can still deliver what it has; it cannot finish when there is no new content, and it never treats the first frame as a scrolling capture.
-
-While running, dragging the move handle on the toolbar moves the selection along the capture direction; after stopping you can move it freely and resize it by dragging its edges. Switching “Vertical / Horizontal” or changing the selection size clears this round's stitching and starts again from the current frame. Horizontal mode means scrolling left and right yourself or dragging the horizontal scrollbar.
-
-Click the scissors icon and choose the up/down crop button (left/right in horizontal mode) to crop immediately to the current frame's boundary; you can also turn on “Auto-crop”, off by default, which shortens the stitched result directly when you scroll back. Edit, copy, save and pin all use the cropped image; saving goes through the ordinary dialog to choose a location. Dragging the move handle to the right of the size keeps the existing image, and releasing it continues appending on top of the captured length without recalculating; only actually changing the selection size or switching direction starts again. The default direction and automatic cropping can be changed in Settings. Windows, macOS and Linux share this interface. macOS needs Screen Recording permission, and automatic scrolling also needs Accessibility and event-posting permission; automatic scrolling on Linux X11 needs XTEST. Wayland needs authorised screen sharing and PipeWire support, and currently relies on you scrolling by hand. Settings can enable an “Ultra-long capture” mode, up to 2 million pixels on one axis; beyond the editor's 32767-pixel edge or 32 million-pixel limit it can still be saved as PNG, but cannot be edited, copied or pinned directly. Normal mode still has a 600-frame ceiling. See the [scrolling capture implementation reference](LONG-CAPTURE.en.md) for the design notes and verification entry points.
-
-### Text recognition
-
-- The result is listed **line by line** in a separate window; clicking a line highlights its position on the original image so you can spot misread text. You can copy everything, copy only the selected lines, or re-recognise in another language.
-- The recognition language is chosen in **Settings → Appearance → Recognition language** (Follow system / Simplified Chinese / English), and can also be switched in place from the capture toolbar menu; the choice is remembered.
-- Recognition uses **built-in system capabilities, with no network, no upload and no added dependency**: Windows uses the system OCR engine and macOS uses Vision. When the system lacks the recognition pack for a language, the window tells you where to add it.
-- When an image is larger than the recognition engine's limit, it is split into strips and recognised in segments, then the line boxes are mapped back to the whole image's coordinates, so a large image loses no lines and stays aligned.
+Build this whiteboard variant from the current source. Launching opens an empty workspace; paste, drop or import an image. Screenshot features and screen permissions are removed. See [Development](DEVELOPMENT.en.md). Upstream packages contain the original product.
 
 ## Annotation editing
 
@@ -239,22 +141,20 @@ The parallel `annotations` and `changes` arrays used by earlier versions (the le
 | 0.9 onwards (current) | `image` can be embedded, included by default in the interface | Adjusted image | `source` and `movements` recorded per object in `objects` |
 | 3.0.0 `.edithere` project | Always embeds the original image | Adjusted image | Full slice cache and current editing state |
 
-The app no longer opens legacy projects or 0.6 minimal feedback, and old annotations are no longer converted to the position in the adjusted result. When you clear the option to include the source image, reopening needs an original PNG of the same name alongside it. An `.edithere` project saves the full slices and editing state (`schemaVersion: "3.0.0"`) and restores directly when reopened. Closing the capture releases the in-memory cache. When you reopen feedback JSON, the layout is rebuilt from the original image and the changes it contains.
+The app no longer opens legacy projects or 0.6 minimal feedback, and old annotations are no longer converted to the position in the adjusted result. When you clear the option to include the source image, reopening needs an original PNG of the same name alongside it. An `.edithere` project saves the full slices and editing state (`schemaVersion: "3.0.0"`) and restores directly when reopened. Closing the whiteboard releases the in-memory cache. When you reopen feedback JSON, the layout is rebuilt from the original image and the changes it contains.
 
 ## Settings
 
-Right-click the EditHere tray icon at the bottom-right of the taskbar and choose “Settings”. The window has five tabs: “Shortcuts”, “Appearance”, “Default behavior”, “Toolbar” and “About and updates”. Click “Save” to apply the settings; shortcuts and appearance take effect immediately, the default tool and zoom apply to the next image, and the startup behavior applies on the next launch. “Cancel” does not change the current configuration.
+Right-click the EditHere tray icon at the bottom-right of the taskbar and choose “Settings”. The window has six tabs: “Shortcuts”, “Appearance”, “Default behavior”, “Toolbar” “About and updates” and “Diagnostics”. Click “Save” to apply the settings; shortcuts and appearance take effect immediately, the default tool and zoom apply to the next image, and the startup behavior applies on the next launch. “Cancel” does not change the current configuration.
 
 ### Shortcuts
 
-There are 22 configurable shortcuts: capture and new annotation (empty window) are global shortcuts and also work in other applications; the rest are used in the EditHere editor window. Click a field and press a new combination, or clear it to disable that shortcut. “Restore defaults” resets the current settings draft and still needs saving to take effect. Duplicate assignments, system conflicts or a failed save show the reason and keep the existing configuration.
+All configurable shortcuts apply inside the EditHere editor; system-wide shortcuts are removed. Click a field and press a new combination, or clear it to disable that shortcut. “Restore defaults” resets the current settings draft and still needs saving to take effect. Duplicate assignments, system conflicts or a failed save show the reason and keep the existing configuration.
 
 The following are the Windows defaults; common Mac editing combinations use Command, redo is Command + Shift + Z, and real-machine verification is still pending.
 
 | Scope | Action | Default shortcut |
 | --- | --- | --- |
-| Global | Capture | Alt + Shift + 2 |
-| Global | New annotation (empty window) | Alt + Shift + 1 |
 | In-app | Open image or project | Ctrl + O |
 | In-app | Paste image | Ctrl + V |
 | In-app | Save project | Ctrl + S |
@@ -264,23 +164,20 @@ The following are the Windows defaults; common Mac editing combinations use Comm
 | In-app | Undo / Redo | Ctrl + Z / Ctrl + Y |
 | In-app | Fit to window | Ctrl + 0 |
 | In-app | Delete selected annotation | Delete |
-| In-app | Cancel / Close capture | Esc |
+| In-app | Cancel / Close whiteboard | Esc |
 | In-app | Smart select / Point / Box / Adjust | B / P / R / V |
 | In-app | Toggle Explode / Adjust components | E / M |
 
-The keys on the capture toolbar (Enter, C, T, P, L, `Ctrl + C`, `Ctrl + S`, `Ctrl + T`, `<`, `>`, R, H, `Esc`) are specific to the capture window and are not configured here.
 
 ### Appearance
 
 - **Appearance mode**: Follow system, Light or Dark, defaulting to Follow system. After switching, the editor, annotation column, component sidebar, menus and Settings window update together; the original pixels of the source image and exported images are unaffected by the theme.
 - **Interface language**: Follow system, Simplified Chinese or English. Switching previews immediately, takes effect on save, and returns to the previous language on cancel. The system file dialogs, message boxes and colour picker follow it too. The JSON field values exported for AI do not change with the interface language.
-- **Recognition language**: Follow system, Simplified Chinese or English, used for text recognition on the capture toolbar and also switchable in place from the toolbar menu.
 
 ### Default behavior
 
 | Option | Description |
 | --- | --- |
-| Screenshot right after launch | When off, the app only stays in the tray on launch; click the tray icon or press the global shortcut to start capturing |
 | Start EditHere at login | After you sign in it only stays in the tray and does not capture automatically; keep the folder the app is in, and after moving it save once to refresh the path |
 | Fit to window when opening an image | When off, images open at 100%; you can still zoom or fit to window at any time |
 | Include the source image in exported JSON by default | Sets the initial state of “Includes the source image” in “View JSON”; saving a project always includes the source image |
@@ -302,7 +199,7 @@ By default each log file is at most 1 MiB and the last 10 files are kept; the lo
 
 ### About and updates
 
-Shows the current version and licence information. You can tick **Check for updates on launch**, or click **Check for updates** to check manually; once a new version is found the button becomes **Update now** — see [In-app updates](#in-app-updates). The **Open the guide** button closes Settings and plays the guide from the start, and unsaved settings are not saved; **Restore defaults** resets the current settings draft and still needs saving to take effect.
+Shows the current version and licence information. You can tick **Check for updates on launch**, or click **Check for updates** to check manually; once a new version is found the button becomes **Update now** — see [Development](DEVELOPMENT.en.md). The **Open the guide** button closes Settings and plays the guide from the start, and unsaved settings are not saved; **Restore defaults** resets the current settings draft and still needs saving to take effect.
 
 Settings are saved in the current user's Qt `AppConfigLocation/settings.ini` and are kept after the app closes. On Windows the default location is `%LOCALAPPDATA%/EditHere/EditHere/settings.ini`; on Mac it is decided by the system configuration directory.
 
@@ -310,7 +207,7 @@ Settings are saved in the current user's Qt `AppConfigLocation/settings.ini` and
 
 - The first manual launch shows a six-step guide in the real editor window, and you can skip it at any time; it uses a sample when there is no capture and keeps your content when there is one. Both the **?** in the top-right and **Open the guide** at the bottom of Settings start it from the beginning. The guide pages forwards and backwards, and Esc only leaves the guide.
 - The guide state is saved separately from your settings preferences, so restoring the default settings does not make the guide reappear repeatedly. Replaying the guide from Settings closes the Settings window and does not save changes you have not applied.
-- After you sign in, the app only stays in the tray and does not capture automatically; “Screenshot right after launch” applies only to an ordinary manual launch.
+- After you sign in, the app only stays in the tray and does not capture automatically; A manual launch opens the whiteboard.
 
 ## Working with AI
 
@@ -320,18 +217,4 @@ Each round of feedback uses a new output file, and the AI reads only the result 
 
 ## Recognition and platform boundaries
 
-Image detection runs entirely on the machine, using connected colour regions, edge aggregation and horizontal/vertical line grid analysis, with no network, account or model download. It can detect cards, images and fairly clear outlines, but it is not OCR or semantic object recognition and cannot guarantee that every candidate matches what you think of as a component; you can draw a box manually to add one.
-
-Windows uses UI Automation and Mac uses Accessibility to read the element boundaries the target application exposes. Detection runs in a separate short-lived process and stops on timeout. The detection information does not include the DOM, component names or source locations in a code repository; DOM-based annotation of web pages remains a separate direction.
-
-Each capture takes a region within one monitor and does not stitch across screens. Mixed scaling, multi-monitor layouts, expanded tray panels, protected content and different browsers still need more device verification.
-
-| Platform | Status |
-| --- | --- |
-| Windows x64 | Developed and tested on Windows 11; the minimum build target is Windows 10 1809+, and older systems have not been tested individually |
-| Windows capture and UI Automation | Verified against pixels, physical sizes and button boundaries using this app's real test windows |
-| Windows tray panel and multi-monitor | Still needs more acceptance testing in real environments |
-| Mac | The GitHub macOS build and automated tests pass, producing a temporarily signed DMG; **not yet acceptance-tested on a real machine** |
-| Mac ARM / Intel | A universal arm64 + x86_64 app is compiled and CI runs tests on Apple silicon; Intel has not been acceptance-tested |
-
-Mac targets macOS 14+ and uses ScreenCaptureKit. Your first capture needs Screen Recording authorisation; system element detection needs Accessibility authorisation, with an entry in the tray menu. Importing ordinary images needs none of these permissions. There is currently no Mac test device available. A public Mac release also needs the product owner's Apple signing and notarisation.
+Smart selection analyzes colors, edges and grids in imported images locally. Use manual regions when detection misses a component. System capture, OCR and accessibility probing are removed; screen recording and accessibility permissions are not required.

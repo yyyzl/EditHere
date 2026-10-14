@@ -1,10 +1,8 @@
-# Linux 预览版
+# Linux 白板版
 
 **简体中文** · [English](LINUX.en.md)
 
-目标环境为 Ubuntu 24.04 x86_64、Qt 6.8.3。已接入 Linux 构建、系统接口和 AppImage 打包；GNOME/KDE 的实际 Wayland 授权与多屏交互仍需实机验收。
-
-编辑器、批注、布局调整、项目保存、复制导出和 CLI 沿用现有 Qt 实现。Linux 自动更新通过发布页手动下载。
+目标环境为 Ubuntu 24.04 x86_64、Qt 6.8.3。启动后进入空白工作台，支持图片导入、粘贴、拖放、批注、布局调整和保存导出。截图、OCR、全局快捷键、屏幕权限及辅助功能探测依赖已删除。
 
 ## 运行
 
@@ -14,39 +12,21 @@
 chmod +x EditHere-linux-x86_64.AppImage edithere-cli
 ./EditHere-linux-x86_64.AppImage
 ./edithere-cli --version
-./EditHere-linux-x86_64.AppImage --capture
-sudo apt-get install tesseract-ocr tesseract-ocr-chi-sim tesseract-ocr-chi-tra
 ```
 
-没有 FUSE 时可使用 `APPIMAGE_EXTRACT_AND_RUN=1 ./EditHere-linux-x86_64.AppImage`，CLI 同样支持此环境变量。AppImage 自带 Qt；OCR 使用系统 Tesseract，不联网。需要正常的桌面 session bus 和匹配桌面的 xdg-desktop-portal 后端；中文字体建议安装 fonts-noto-cjk。GNOME 没有托盘宿主时，普通启动保留编辑窗口入口，确认关闭后退出。CLI 也可通过 AppImage 的 `--cli <参数>` 调用。
-
-## 平台行为
-
-| 能力 | 推荐复用与实现 | 验收重点 |
-| --- | --- | --- |
-| 截图 | X11 使用 Qt QScreen；Wayland 优先使用 ScreenCast Portal/PipeWire | Wayland 先授权一个显示器，再由 EditHere 框选；按 Portal 几何信息对应所选屏幕，不关联原生元素。缺少 PipeWire 或 ScreenCast 显示器能力时回退 Screenshot Portal 的系统选区，仅支持普通截图 |
-| 长截图 | X11 使用 XGetImage/XTest；Wayland 复用授权的 PipeWire 屏幕流 | 共用菜单、固定比例预览与纵向/横向手动拼接。X11 自动纵向滚动需要 XTEST 和可验证的原窗口进程；Wayland 当前仅手动滚动，显示器无法唯一对应时拒绝开始 |
-| 全局快捷键 | Wayland 使用 GlobalShortcuts portal；X11 使用 Xlib 和 Qt 事件通知 | 桌面管理实际快捷键授权；不支持时在系统快捷键中绑定程序完整路径加 `--capture`。X11 检查冲突并兼容 Caps/Num Lock |
-| 系统元素识别 | AT-SPI，沿用隔离探测子进程 | 依赖目标应用提供可访问性信息，限定遍历数量、深度与超时；不可用时回退图片检测 |
-| 开机启动 | XDG Autostart `.desktop` 文件，Qt QStandardPaths 定位用户配置目录 | 路径转义、移动程序后修复、禁用仅删除本程序登记 |
-| OCR | Tesseract TSV，异步运行、分条带坐标还原 | 明确提示语言包缺失、启动失败、超时和格式错误 |
-| 分发 | linuxdeploy + Qt 插件生成 AppImage | 官方工具固定 SHA-256；附 CLI、桌面图标、文件关联元数据与许可；暂不提供 deb/Flatpak |
+没有 FUSE 时使用 `APPIMAGE_EXTRACT_AND_RUN=1`。AppImage 自带 Qt；中文字体可使用 fonts-noto-cjk。CLI 也可通过 AppImage 的 `--cli <参数>` 调用。登录启动仍使用 XDG Autostart，可在设置中管理。
 
 ## 构建与打包
 
-依赖 GCC、CMake、Ninja、Qt 6.8.3 gcc_64、X11、XTest 和 AT-SPI 开发库。Wayland 长截图还需要可选的 PipeWire 1.0.4 及以上开发库；缺少时构建保留普通截图。启用 PipeWire 的 AppImage 会携带匹配版本的客户端主库、模块、SPA 插件与配置，打包环境须提供 `libpipewire-0.3-modules`、`libspa-0.2-modules` 和 `pipewire-bin`。完整依赖清单见 `.github/workflows/native-linux.yml`；Qt Wayland 随基础 SDK 提供，不是 aqt 的可选模块。
+使用 GCC、CMake、Ninja 和 Qt 6.8.3 gcc_64。窗口系统与多媒体插件的系统依赖见 `.github/workflows/native-linux.yml`。
 
 ```bash
 export QT_ROOT=/path/to/Qt/6.8.3/gcc_64
-dbus-run-session -- bash scripts/build-linux.sh
-dbus-run-session -- xvfb-run -a build-linux/linux_platform_tests -platform xcb
+bash scripts/build-linux.sh
 python3 scripts/fetch-linuxdeploy.py
 export LINUXDEPLOY="$PWD/.tools/linuxdeploy/linuxdeploy-x86_64.AppImage"
 export LINUXDEPLOY_PLUGIN_QT="$PWD/.tools/linuxdeploy/linuxdeploy-plugin-qt-x86_64.AppImage"
 bash scripts/package-linux.sh
-dbus-run-session -- xvfb-run -a python3 scripts/check-linux-package.py dist/linux-*/EditHere-linux-x86_64.AppImage
 ```
 
-默认打包到 `dist/linux-<版本>/`，已有目录时拒绝覆盖；可用 `EDITHERE_PACKAGE_DIR` 指定新目录。Linux 构建随发布标签与相关 PR 触发：打标签时由发布工作流一并产出 AppImage，与其他平台的包一同挂到发布页。专项测试在独立 DBus 会话模拟 Portal，真实 X11 通过 Xvfb 验证，不替代 GNOME/KDE 会话验收。开机启动登记原始 AppImage 路径，不使用临时挂载路径；移动后保存设置可刷新。
-
-官方接口资料：[Qt QScreen](https://doc.qt.io/qt-6.8/qscreen.html)、[ScreenCast Portal](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.ScreenCast.html)、[Screenshot Portal](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.Screenshot.html)、[GlobalShortcuts Portal](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.GlobalShortcuts.html)。
+GitHub Actions 按相同源码构建 Linux AppImage。发行工作流会在 Windows、macOS、Linux 和 Web 全部打包成功后发布 Release。实际桌面交互仍需在目标 Linux 环境验收。

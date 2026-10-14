@@ -143,18 +143,6 @@ QFrame#noteCard { background:@surface@; border:1px solid @border@; border-radius
 QFrame#noteCard[selected="true"] { background:@cardSelected@; border-color:@focus@; }
 QLabel#noteBadge { background:@accent@; color:white; border-radius:11px; font-weight:600; font-size:11px; }
 QWidget#toolbarSeparator,QWidget#inspectorSeparator { background:@border@; border:0; }
-QWidget#scrollCaptureProgress QPushButton,QWidget#scrollCropMenu QPushButton,QPushButton#scrollRegionHandle { background:transparent; border:1px solid transparent; border-radius:8px; padding:0; min-width:0; min-height:0; }
-QWidget#scrollCaptureProgress QPushButton:hover,QWidget#scrollCropMenu QPushButton:hover,QPushButton#scrollRegionHandle:hover { background:@hover@; }
-QWidget#scrollCaptureProgress QPushButton:pressed,QWidget#scrollCropMenu QPushButton:pressed,QPushButton#scrollRegionHandle:pressed { background:@pressed@; }
-QWidget#scrollCaptureProgress QPushButton:checked { background:@selected@; color:@accent@; }
-QWidget#scrollCaptureProgress QPushButton:disabled,QWidget#scrollCropMenu QPushButton:disabled,QPushButton#scrollRegionHandle:disabled { background:transparent; color:@disabled@; }
-QWidget#scrollCaptureProgress QPushButton:focus,QWidget#scrollCropMenu QPushButton:focus { border-color:@focus@; }
-QWidget#scrollCaptureProgress QPushButton#scrollDirection { background:@button@; font-size:14px; padding:0 12px; }
-QWidget#scrollCaptureProgress QPushButton#scrollDirection:hover { background:@hover@; }
-QWidget#scrollCaptureProgress QPushButton#scrollDirection::menu-indicator { subcontrol-origin:padding; subcontrol-position:center right; right:8px; width:9px; height:9px; }
-QPushButton#scrollRegionHandle { background:@window@; }
-QWidget#scrollCropMenu QCheckBox { font-size:14px; spacing:6px; }
-QWidget#scrollCropMenu QCheckBox::indicator { width:18px; height:18px; }
 QPushButton#foldNote { color:@accent@; background:transparent; border:0; padding:0 3px; min-height:16px; font-size:11px; }
 QPushButton#foldNote:hover { background:@selected@; }
 QLabel#noteCoordinates { font-size:10px; color:@muted@; }
@@ -210,9 +198,7 @@ QToolTip { background:@tooltip@; color:@tooltipText@; padding:5px 8px; border:0;
             const auto name = button->property("glyphName").toString();
             if (!name.isEmpty()) {
                 QColor color = button->property("glyphColor").value<QColor>();
-                if (button->objectName() == "scrollStop")
-                    color = tone("#bd252f", "#ff8991");
-                else if (button->property("primary").toBool() ||
+                if (button->property("primary").toBool() ||
                          (button->objectName() == "explodeButton" && button->isChecked()))
                     color = Qt::white;
                 button->setIcon(glyph(name, color));
@@ -237,55 +223,6 @@ bool isDarkTheme() {
 }
 QColor accent() {
     return QColor(darkTheme ? "#0a84ff" : "#007aff");
-}
-QRectF magnifierPlacement(QPointF at, QSizeF window, const QVector<QRectF> &tools) {
-    const QSizeF panel(magnifierPanelWidth, magnifierPanelHeight);
-    constexpr double gap = 24, margin = 8;
-    // Anywhere the panel is put is confined to the window; that is what keeps a flip
-    // from turning into a panel half off the screen.
-    const auto settle = [&](double x, double y) {
-        return QPointF(std::clamp(x, margin, std::max(margin, window.width() - panel.width() - margin)),
-                       std::clamp(y, margin, std::max(margin, window.height() - panel.height() - margin)));
-    };
-    const auto clear = [&](QPointF topLeft) {
-        const QRectF here(topLeft, panel);
-        for (const QRectF &tool : tools)
-            if (here.intersects(tool))
-                return false;
-        return true;
-    };
-    // Beside the pointer, and on the other side of it when there is no room there.
-    double x = at.x() + gap;
-    if (x + panel.width() > window.width() - margin)
-        x = at.x() - gap - panel.width();
-    double y = at.y() + gap;
-    if (y + panel.height() > window.height() - margin)
-        y = at.y() - gap - panel.height();
-    QPointF placed = settle(x, y);
-    if (clear(placed))
-        return {placed, panel};
-    // It has landed on a tool. Step out along whichever side is nearest, which keeps
-    // the panel as close to the pointer as it can be; a way that is still on a tool or
-    // would leave the window is not a way out at all.
-    double nearest = std::numeric_limits<double>::max();
-    for (const QRectF &tool : tools) {
-        if (!QRectF(placed, panel).intersects(tool))
-            continue;
-        const QVector<QPointF> ways{settle(placed.x(), tool.top() - panel.height() - margin),
-                                    settle(placed.x(), tool.bottom() + margin),
-                                    settle(tool.left() - panel.width() - margin, placed.y()),
-                                    settle(tool.right() + margin, placed.y())};
-        for (const QPointF &way : ways) {
-            if (!clear(way))
-                continue;
-            const double distance = std::abs(way.x() - placed.x()) + std::abs(way.y() - placed.y());
-            if (distance < nearest) {
-                nearest = distance;
-                placed = way;
-            }
-        }
-    }
-    return {placed, panel};
 }
 void applyTheme(ThemeMode mode) {
     currentTheme = mode;

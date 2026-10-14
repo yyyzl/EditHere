@@ -32,7 +32,7 @@ QString agentStateLocation() {
 }
 QString agentServerName() {
     const auto state = agentStateLocation();
-    return "EditHere-agent-v1-" + QString::fromLatin1(QCryptographicHash::hash(state.toUtf8(), QCryptographicHash::Sha256).toHex().left(24));
+    return "EditHere-wb-agent-v1-" + QString::fromLatin1(QCryptographicHash::hash(state.toUtf8(), QCryptographicHash::Sha256).toHex().left(24));
 }
 QByteArray encodeAgentMessage(const QJsonObject &message) {
     const auto json = QJsonDocument(message).toJson(QJsonDocument::Compact);

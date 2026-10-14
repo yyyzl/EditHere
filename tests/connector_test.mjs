@@ -13,6 +13,29 @@ process.env.EDITHERE_CLI = process.execPath;
 const connectorUrl = new URL('../connector/mcp-server.mjs', import.meta.url);
 const { runCli, cliResultToContent, statusContent, annotateResultToContent } = await import(connectorUrl);
 
+test('白板 MCP 保留批注工具并移除截图入口', { timeout: 5000 }, async () => {
+  const server = spawn(process.execPath, [fileURLToPath(connectorUrl)], { stdio: ['pipe', 'pipe', 'pipe'] });
+  server.stdout.setEncoding('utf8');
+  let output = '';
+  server.stdout.on('data', (chunk) => { output += chunk; });
+  try {
+    server.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 9, method: 'tools/list' }) + '\n');
+    const started = Date.now();
+    while (!output.includes('"id":9') && Date.now() - started < 2000) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    const response = output.trim().split('\n').filter(Boolean).map(JSON.parse).find((reply) => reply.id === 9);
+    assert.ok(response);
+    assert.deepEqual(response.result.tools.map((tool) => tool.name).sort(), [
+      'edithere_status', 'edithere_open', 'edithere_annotate',
+      'edithere_annotate_start', 'edithere_annotate_poll', 'edithere_export',
+    ].sort());
+  } finally {
+    server.stdin.end();
+    server.kill('SIGKILL');
+  }
+});
+
 function videoFeedback(frameCount = 2) {
   const frames = Array.from({ length: frameCount }, (_, index) => ({
     id: `frame-${index}`,

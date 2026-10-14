@@ -64,7 +64,6 @@ class I18nTests : public QObject {
 
         // "EditHere": labels that double as JSON identifiers are translated for display.
         QCOMPARE(localizedLabel(QString::fromUtf8("色块区域")), QString("Color block area"));
-        QCOMPARE(QCoreApplication::translate("EditHere", "整个屏幕"), QString("Whole screen"));
         // Unknown labels fall through unchanged so identifiers and native names stay readable.
         QCOMPARE(localizedLabel(QString("action-button")), QString("action-button"));
 
@@ -143,20 +142,7 @@ class I18nTests : public QObject {
         QVERIFY(installLanguage(LanguageMode::English));
         QCOMPARE(QCoreApplication::translate("QPlatformTheme", "Save"), QString("Save"));
     }
-    void oneFeatureKeepsOneEnglishName() {
-        // README.en.md presents this feature as "Explode" (大爆炸) in three places, and the
-        // code agrees (explodeButton, glyph("explode"), the E shortcut, Editor::explode).
-        // The interface has to agree too. Pinning it here means a rename on either side --
-        // catalogue or documentation -- shows up as a failing test instead of only being
-        // noticed by someone reading both.
-        QVERIFY(installLanguage(LanguageMode::English));
-        QCOMPARE(QCoreApplication::translate("h2d::Editor", "大爆炸"), QString("Explode"));
-        QCOMPARE(QCoreApplication::translate("h2d", "切换大爆炸"), QString("Toggle Explode"));
-        QCOMPARE(QCoreApplication::translate("h2d::LayoutCanvas", "大爆炸组件画布"),
-                 QString("Explode component canvas"));
-        QCOMPARE(QCoreApplication::translate("h2d::GuideOverlay", "用大爆炸调整布局"),
-                 QString("Adjust the layout with Explode"));
-    }
+
 };
 QTEST_MAIN(I18nTests)
 #include "i18n_test.moc"

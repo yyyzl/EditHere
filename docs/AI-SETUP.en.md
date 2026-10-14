@@ -1,5 +1,8 @@
 # Let AI set up EditHere for you
 
+> Whiteboard packages are available from [this repository Releases](https://github.com/yyyzl/EditHere/releases); Windows, macOS and Linux build from the same source in GitHub Actions.
+
+
 [简体中文](AI-SETUP.md) · **English**
 
 [Back to the product introduction](../README.md) · [Command-line reference](AGENT-CLI.en.md) · [Companion skill](../skills/edithere/SKILL.md)
@@ -9,13 +12,13 @@
 Give the passage below to an AI agent that can run commands and read and write files on your computer:
 
 ```text
-Follow https://github.com/Inginnng/EditHere/blob/codex/native/docs/AI-SETUP.en.md to set up EditHere and the edithere skill for my current AI tool. Reuse an existing installation on this machine first; only download and install if there is none. Do not interrupt what I am editing. When you are done, verify the command line and the skill, and tell me how to start using it.
+Follow https://github.com/yyyzl/EditHere/blob/codex/annotation-whiteboard/docs/AI-SETUP.en.md to set up EditHere and the edithere skill for my current AI tool. Reuse an existing installation on this machine first; only download and install if there is none. Do not interrupt what I am editing. When you are done, verify the command line and the skill, and tell me how to start using it.
 ```
 
 If you prefer the portable version, use this passage:
 
 ```text
-Follow https://github.com/Inginnng/EditHere/blob/codex/native/docs/AI-SETUP.en.md to set up the portable EditHere and the edithere skill for my current AI tool. Look for an existing extracted folder first; if there is none, download the official complete portable ZIP. Do not run the installer, change PATH or set launch at login. Save the full path to the CLI, and tell me how to use it once you have verified it.
+Follow https://github.com/yyyzl/EditHere/blob/codex/annotation-whiteboard/docs/AI-SETUP.en.md to set up the portable EditHere and the edithere skill for my current AI tool. Look for an existing extracted folder first; if there is none, download the official complete portable ZIP. Do not run the installer, change PATH or set launch at login. Save the full path to the CLI, and tell me how to use it once you have verified it.
 ```
 
 If a web chat or a remote cloud agent cannot access your computer, it can only offer guidance and cannot complete a local installation from this passage alone. **The source code and release packages are public**: the repository files and releases needed for setup are publicly accessible, and you do not need to request project access separately.
@@ -36,7 +39,7 @@ The steps below are for the agent carrying out the setup. Communicate in the use
 
 Download only when there is no usable app on the machine or an upgrade is genuinely needed.
 
-1. From the [Releases](https://github.com/Inginnng/EditHere/releases) metadata of the official `Inginnng/EditHere` repository, choose the release that suits the current platform, and read that release's notes, the actual asset names and `SHA256SUMS.txt`. Do not guess file names or download URLs from old documents. Release asset names carry no version number, so you can fetch the latest version from a fixed address: `https://github.com/Inginnng/EditHere/releases/latest/download/EditHere-win-x64-setup.exe` (installer), `EditHere-win-x64.zip` (portable), `EditHere-macos-universal.dmg`, `SHA256SUMS.txt`.
+1. From the [Releases](https://github.com/yyyzl/EditHere/releases) metadata of the official `Inginnng/EditHere` repository, choose the release that suits the current platform, and read that release's notes, the actual asset names and `SHA256SUMS.txt`. Do not guess file names or download URLs from old documents. Release asset names carry no version number, so you can fetch the latest version from a fixed address: `https://github.com/yyyzl/EditHere/releases/latest/download/EditHere-win-x64-setup.exe` (installer), `EditHere-win-x64.zip` (portable), `EditHere-macos-universal.dmg`, `SHA256SUMS.txt`.
 2. You can read release information from the official public page or the GitHub API. If the GitHub CLI is configured on the machine, use `gh release view --repo Inginnng/EditHere --json tagName,assets,body` to read the latest release information, then download using the tag and exact asset names you get back; there is no need to configure extra credentials for downloading a public app.
 3. If you get a 401/403/404 or the download fails, check the actual URL, whether the asset exists, API rate limiting and network state; for a signed-in tool, also check its authentication state. Report the specific blocker, do not ask for an access token, do not guess a mirror, and do not save web error content as an installer and then run it. You can keep reusing a complete app that already exists on the machine.
 4. Download the app and the `SHA256SUMS.txt` for the same version, and compare the matching entry with SHA-256. On Windows use `Get-FileHash -Algorithm SHA256 -LiteralPath <file path>`; on macOS use `shasum -a 256 <file path>`. If the entry is missing or does not match, stop using that file and investigate why.

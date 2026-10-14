@@ -2,9 +2,9 @@
 
 **简体中文** · [English](AGENT-CLI.en.md)
 
-[返回产品介绍](../README.md) · [让 AI 帮你安装](https://github.com/Inginnng/EditHere/blob/codex/native/docs/AI-SETUP.md) · [使用指南](USER-GUIDE.md) · [配套 AI skill](../skills/edithere/SKILL.md)
+[返回产品介绍](../README.md) · [让 AI 帮你安装](https://github.com/yyyzl/EditHere/blob/codex/annotation-whiteboard/docs/AI-SETUP.md) · [使用指南](USER-GUIDE.md) · [配套 AI skill](../skills/edithere/SKILL.md)
 
-EditHere 提供本地命令行入口，让 AI 打开截图供你标注。你可以写修改意见、移动或缩放组件，点击“完成并返回 AI”后，命令行才将本轮反馈交给 AI。图片、批注和导出均在本机处理；后续是否发送给某个 AI 服务，由使用该文件的工具决定。
+EditHere 提供本地命令行入口，让 AI 打开图片供你标注。你可以写修改意见、移动或缩放组件，点击“完成并返回 AI”后，命令行才将本轮反馈交给 AI。图片、批注和导出均在本机处理；后续是否发送给某个 AI 服务，由使用该文件的工具决定。
 
 ## 免安装也能接入 AI
 
@@ -15,12 +15,12 @@ EditHere 提供本地命令行入口，让 AI 打开截图供你标注。你可�
 复制下面这段话给能在本机执行命令的 AI，即可让它按指南完成配置：
 
 ```text
-请按 https://github.com/Inginnng/EditHere/blob/codex/native/docs/AI-SETUP.md 帮我配置 EditHere 和 edithere skill。
+请按 https://github.com/yyyzl/EditHere/blob/codex/annotation-whiteboard/docs/AI-SETUP.md 帮我配置 EditHere 和 edithere skill。
 使用免安装模式，不运行 Windows 安装器，不修改 PATH 或开机启动；优先复用我已经解压的程序，否则下载并完整解压官方免安装版压缩包。
 记录实际 CLI 路径，验证 CLI 可运行以及当前 AI 工具能否发现 skill，并告诉我如何开始标注。
 ```
 
-源码与发布包已公开，可直接下载；网页聊天或无本机执行权限的 AI 无法仅凭这段话完成本机配置。需要常规安装时，见[AI 配置指南](https://github.com/Inginnng/EditHere/blob/codex/native/docs/AI-SETUP.md)。
+源码与发布包已公开，可直接下载；网页聊天或无本机执行权限的 AI 无法仅凭这段话完成本机配置。需要常规安装时，见[AI 配置指南](https://github.com/yyyzl/EditHere/blob/codex/annotation-whiteboard/docs/AI-SETUP.md)。
 
 ## 找到 CLI
 
@@ -58,11 +58,11 @@ macOS 的命令名是 `edithere-cli`，随应用部署在 `EditHere.app/Contents
 
 ## Windows Agent 的桌面访问
 
-在受限的 Agent 沙箱里，命令可能无法连接当前登录用户的 EditHere，或启动到用户看不到的桌面。因此 `status`、`open`、`capture`、`annotate` 应由 Agent 工具提供的、获准访问当前用户桌面的入口执行。已知存在该隔离时，应在第一次调用选择合适入口；无需先制造一次失败。Codex 工具若提供 `sandbox_permissions`，可对具体桌面命令使用 `require_escalated`，遵守其审批结果。无需更改全局沙箱或应用的权限设置。`--help`、`--version` 和离线 `export` 不依赖桌面连接。
+在受限的 Agent 沙箱里，命令可能无法连接当前登录用户的 EditHere，或启动到用户看不到的桌面。因此 `status`、`open`、`annotate` 应由 Agent 工具提供的、获准访问当前用户桌面的入口执行。已知存在该隔离时，应在第一次调用选择合适入口；无需先制造一次失败。Codex 工具若提供 `sandbox_permissions`，可对具体桌面命令使用 `require_escalated`，遵守其审批结果。无需更改全局沙箱或应用的权限设置。`--help`、`--version` 和离线 `export` 不依赖桌面连接。
 
 0.8.20 曾把连接受限误报为“未运行”，再尝试启动并等待。0.8.21 会保留连接错误并区分“未运行”和“无法判断”。工具在创建命令进程前就失败时，也不能用该结果判断 EditHere 是否运行；没有反馈文件只表示尚未拿到本轮结果。
 
-0.9.6 与 0.9.7 的命令行按自己的程序名推算通信端点，与桌面程序使用的名字不同：桌面程序在运行，`status` 也会返回 `running:false`，`open`、`capture`、`annotate` 报 `startup_timeout`。0.9.8 已修正。遇到这种组合先核对版本并升级，不要反复重启桌面程序。
+0.9.6 与 0.9.7 的命令行按自己的程序名推算通信端点，与桌面程序使用的名字不同：桌面程序在运行，`status` 也会返回 `running:false`，`open`、`annotate` 报 `startup_timeout`。0.9.8 已修正。遇到这种组合先核对版本并升级，不要反复重启桌面程序。
 
 ## 命令一览
 
@@ -71,7 +71,6 @@ macOS 的命令名是 `edithere-cli`，随应用部署在 `EditHere.app/Contents
 | `--help` / `--version` | 显示当前版本支持的参数 / 版本 | 否 |
 | `status` | 查询运行与文档状态，不启动 GUI | 否 |
 | `open <image-video-or-project>` | 打开图片、视频或 `.edithere` 项目（含视频项目） | 否，仅请求受理 |
-| `capture` | 唤起截图 | 否，仅请求受理 |
 | `export <image-video-project-or-feedback> --output <new.json>` | 将已保存项目（含视频项目）、图片或有效反馈 JSON 转为反馈 JSON | 否 |
 | `annotate <image-video-or-project> --output <new.json>` | 打开用户标注会话并等待明确提交 | **是** |
 
@@ -104,7 +103,7 @@ $Feedback = Get-Content -LiteralPath $FeedbackPath -Raw -Encoding UTF8 | Convert
 
 使用能返回后台会话 ID 的 Agent 工具时，应持续等待同一 CLI 进程；不要因为单次工具等待结束而重复启动 `annotate`。超时、取消或失败后，不读取任何上次结果，也不自动发起新一轮标注。连接中断可能发生在文件已写入但成功回执尚未返回时；应先核查本次唯一输出是否存在且为有效 JSON，并确认用户是否已明确提交，不能将结果不明直接当作失败后盲目重试。
 
-已有未保存文档、进行中的截图或标注会话可能让请求返回 `busy`。检测到桌面实例但 Agent 接口不可用时返回 `agent_endpoint_unavailable`，可能是初始化中或版本不匹配；检查版本，需要重启时先保存工作，再从托盘正常退出。不要强制关闭进程或覆盖文件来绕过这些状态。
+已有未保存文档、进行中的标注会话可能让请求返回 `busy`。检测到桌面实例但 Agent 接口不可用时返回 `agent_endpoint_unavailable`，可能是初始化中或版本不匹配；检查版本，需要重启时先保存工作，再从托盘正常退出。不要强制关闭进程或覆盖文件来绕过这些状态。
 
 ## 导出已保存项目
 
@@ -124,7 +123,7 @@ $Feedback = Get-Content -LiteralPath $FeedbackPath -Raw -Encoding UTF8 | Convert
 {"ok":true,"command":"annotate","output":"C:/work/feedback-unique.json","annotations":2,"imageIncluded":true}
 ```
 
-`open` / `capture` 的响应带 `accepted: true`，仅表示请求受理；`open` 还会返回绝对路径 `input`。常见失败响应：
+`open` 的响应带 `accepted: true`，仅表示请求受理；`open` 还会返回绝对路径 `input`。常见失败响应：
 
 ```json
 {"ok":false,"error":{"code":"busy","message":"..."}}
@@ -132,7 +131,7 @@ $Feedback = Get-Content -LiteralPath $FeedbackPath -Raw -Encoding UTF8 | Convert
 
 | 退出码 | 含义 |
 | --- | --- |
-| `0` | 命令成功；`open` / `capture` 仅表示请求受理 |
+| `0` | 命令成功；`open` 仅表示请求受理 |
 | `2` | 参数或通信协议错误 |
 | `3` | 应用或连接不可用 |
 | `4` | 当前状态忙 |
@@ -145,7 +144,7 @@ $Feedback = Get-Content -LiteralPath $FeedbackPath -Raw -Encoding UTF8 | Convert
 
 `agent_endpoint_unavailable`（退出码 3）表示发现桌面实例，但 Agent 接口尚不可用；`startup_failed` / `startup_timeout`（退出码 3）分别表示启动动作失败、启动后接口未及时就绪。遇到访问限制时，应通过工具支持的获准桌面入口执行；没有入口或未获准则说明限制，不自动放宽权限或循环启动。
 
-运行时还返回文档、截图和会话状态 `hasDocument`、`dirty`、`capturing`、`agentSession`，以及 `executable`、`startupRegistered`、`startupNotice`。这些信息不代表某次反馈已经提交；正常流程仍须等待对应 `annotate` 的成功回执。
+运行时还返回文档和会话状态 `hasDocument`、`dirty`、`agentSession`，以及 `executable`、`startupRegistered`、`startupNotice`。这些信息不代表某次反馈已经提交；正常流程仍须等待对应 `annotate` 的成功回执。
 
 缺少输入文件、输出已存在或写入失败返回 `io_error`（退出码 5）；无效参数返回 `invalid_arguments`（退出码 2）。先解决具体错误，再使用新的输出路径重试；对结果不明的连接中断先核查本轮状态。
 

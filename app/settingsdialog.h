@@ -42,13 +42,13 @@ class SettingsDialog final : public QDialog {
     void retranslate();
     void applyLanguage(LanguageMode mode);
     void save();
-    QComboBox *theme_, *defaultTool_, *language_, *ocrLanguage_, *scrollAxis_;
+    QComboBox *theme_, *defaultTool_, *language_;
     // Language the dialog opened with, restored when the user cancels.
     LanguageMode languageOnEntry_ = LanguageMode::System;
     // Language currently installed by this dialog, so repeated selections are no-ops.
     LanguageMode appliedLanguage_ = LanguageMode::System;
-    QCheckBox *captureOnStartup_, *launchAtLogin_, *fitImageOnOpen_, *embedOriginal_,
-        *confirmBeforeDiscard_, *checkUpdatesOnStartup_, *scrollAutoCrop_, *scrollUltraLong_;
+    QCheckBox *launchAtLogin_, *fitImageOnOpen_, *embedOriginal_,
+        *confirmBeforeDiscard_, *checkUpdatesOnStartup_;
     QLineEdit *feedbackDir_;
     QTabWidget *tabs_;
     class UpdateChecker *updater_;
@@ -56,14 +56,12 @@ class SettingsDialog final : public QDialog {
     QLabel *error_, *launchAtLoginNotice_;
     // Labels styled through the "settingsSection" object name cannot carry a unique
     // object name of their own, so they are kept as members to stay retranslatable.
-    QLabel *shortcutGlobalLabel_ = nullptr, *shortcutLocalLabel_ = nullptr;
+    QLabel *shortcutLocalLabel_ = nullptr;
     QLabel *appearanceTitle_ = nullptr, *languageTitle_ = nullptr, *toolbarTitle_ = nullptr;
-    QLabel *ocrTitle_ = nullptr;
     QLabel *versionLabel_ = nullptr;
     QVector<QLabel *> shortcutLabels_;
     QMap<QString, QKeySequenceEdit *> keys_;
     QMap<QString, QCheckBox *> toolbarActions_;
     std::function<QString(const AppSettings &)> apply_;
-    CaptureStyle captureStyle_;
 };
 } // namespace h2d

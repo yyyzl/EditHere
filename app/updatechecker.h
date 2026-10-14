@@ -19,7 +19,6 @@ class UpdateChecker final : public QObject {
     Q_OBJECT
   public:
     enum Status { Current, Available, NewerLocal, Failed };
-    enum Source { GitHub, Gitee };
     struct Asset {
         QString name;
         QUrl url;
@@ -38,12 +37,8 @@ class UpdateChecker final : public QObject {
     };
     explicit UpdateChecker(QObject *parent = nullptr);
     ~UpdateChecker() override;
-    static QUrl releasesUrl(Source source = GitHub);
-    static Result parseRelease(const QByteArray &bytes, const QString &currentVersion,
-                               Source source = GitHub);
-    static Result parseReleases(const QByteArray &bytes, const QString &currentVersion,
-                                Source source = Gitee);
-    static Result selectRelease(const Result &github, const Result &gitee);
+    static QUrl releasesUrl();
+    static Result parseRelease(const QByteArray &bytes, const QString &currentVersion);
     // Resolves the temporary path a package is downloaded to and drops whatever
     // is already there. The writer appends, so a leftover file from a previous
     // attempt would be concatenated with the new package and fail the SHA256
@@ -78,9 +73,8 @@ class UpdateChecker final : public QObject {
   private:
     friend class UpdateCheckerTestAccess;
     void requestPublic();
-    void requestGitee();
-    void requestSource(Source source);
-    void collectSource(Source source, Result result);
+    void requestSource();
+    void collectSource(Result result);
     void completeCheck();
     void finish(Result result);
     void verifyAndInstall(const QString &filePath, const QString &expectedHash, bool isInstaller);
@@ -91,7 +85,6 @@ class UpdateChecker final : public QObject {
     void cancelHandoff();
     QNetworkAccessManager network_;
     QPointer<QNetworkReply> reply_;
-    QPointer<QNetworkReply> giteeReply_;
     QPointer<QNetworkReply> downloadReply_;
     QPointer<QNetworkReply> hashReply_;
     QProcess process_;
@@ -103,10 +96,7 @@ class UpdateChecker final : public QObject {
     bool awaitingHandoff_ = false;
     QString expectedInstallVersion_, handoffToken_, handoffTarget_, handoffId_;
     QByteArray output_;
-    QByteArray giteeOutput_;
-    std::optional<Result> githubResult_, giteeResult_;
-    std::optional<Result> giteeCandidate_;
-    int giteePage_ = 1;
+    std::optional<Result> checkResult_;
     QString downloadPath_;
     QString downloadFileName_;
     bool busy_ = false;

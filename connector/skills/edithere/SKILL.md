@@ -19,13 +19,13 @@ EditHere 是一个**本机桌面程序**，让用户在截图或设计图上直�
 
 连接器安装 ≠ EditHere 可用。EditHere 需要用户单独安装，程序不存在时所有需要桌面的工具都会返回 `edithere-cli 不可用`。遇到这种情况：
 
-1. 告知用户从 <https://github.com/Inginnng/EditHere/releases/latest> 下载安装（Windows：`setup.exe`；macOS：DMG）；
+1. 告知用户从 <https://github.com/yyyzl/EditHere/releases/latest> 下载安装（Windows：`setup.exe`；macOS：DMG）；
 2. 若用户已安装但不在默认位置，让其设置环境变量 `EDITHERE_CLI` 指向 CLI 绝对路径（Windows 默认 `%LOCALAPPDATA%\Programs\EditHere\edithere-cli.exe`，macOS 默认 `/Applications/EditHere.app/Contents/MacOS/edithere-cli`）；
 3. **不要**自行下载、解压或安装程序；也不要换成内核里另一份同名可执行文件。
 
 ## 版本检查
 
-先跑一次 `edithere_status`：响应里的 `connector` 给出连接器版本、实际使用的 CLI 路径与来源，`version` 是 EditHere 程序自身的版本。需要独立核对时用该路径运行 `--version`，输出一行 `EditHere <版本>`，不连接桌面。本 skill 按 **0.10.0** 描述能力：只做图片与 `.edithere` 项目标注时 0.9.8 及以上即可，涉及视频时必须 0.10.0 及以上。低于所需版本时告知用户升级（<https://github.com/Inginnng/EditHere/releases/latest>），不要改用另一份同名程序，也不要改动全局环境。
+先跑一次 `edithere_status`：响应里的 `connector` 给出连接器版本、实际使用的 CLI 路径与来源，`version` 是 EditHere 程序自身的版本。需要独立核对时用该路径运行 `--version`，输出一行 `EditHere <版本>`，不连接桌面。本 skill 按 **0.10.0** 描述能力：只做图片与 `.edithere` 项目标注时 0.9.8 及以上即可，涉及视频时必须 0.10.0 及以上。低于所需版本时告知用户升级（<https://github.com/yyyzl/EditHere/releases/latest>），不要改用另一份同名程序，也不要改动全局环境。
 
 ## 工具一览
 
@@ -33,7 +33,6 @@ EditHere 是一个**本机桌面程序**，让用户在截图或设计图上直�
 | --- | --- | --- |
 | `edithere_status` | 查询程序与文档状态，不启动界面。**每次标注前先调用** | 立即 |
 | `edithere_open` | 打开图片、视频或 `.edithere` 项目（含视频项目），仅受理请求 | 立即 |
-| `edithere_capture` | 唤起截图，仅受理请求 | 立即 |
 | `edithere_annotate_start` | **推荐**。发起标注会话后立即返回会话 ID（视频请用户先暂停到目标画面） | 立即 |
 | `edithere_annotate_poll` | 查询会话是否完成，完成后返回反馈摘要 | 立即 |
 | `edithere_annotate` | 阻塞等待用户提交（最长 1800 秒）。仅在客户端支持长任务且不需要并发时使用；视频反馈含每帧时间戳 | 阻塞 |
@@ -42,7 +41,7 @@ EditHere 是一个**本机桌面程序**，让用户在截图或设计图上直�
 ## 推荐调用流程
 
 1. **确认可用**：`edithere_status`。返回 `running:false` 或报错时先按上面的前置条件处理，不要直接发起标注。
-2. **准备图像**：用绝对路径。已有图片无需再截屏——`edithere_capture` 只唤起截图，不会返回反馈。保持原始像素尺寸。
+2. **准备图像**：用绝对路径。已有图片无需再准备图片。保持原始像素尺寸。
 3. **发起会话**：`edithere_annotate_start`，传 `imagePath`（图片、视频或 `.edithere` 项目）。可选 `timeoutSeconds`（默认 1800）、`noImage`、`outputDir`。
 4. **告知用户**：明确请用户在 EditHere 中批注或调整组件（视频先暂停到目标画面），完成后点击顶部 **"完成并返回 AI"**。**不要替用户点击完成按钮。**
 5. **轮询**：用返回的 `sessionId` 调 `edithere_annotate_poll`。仍在等待时会返回已等待秒数；等待期间可以处理其他独立任务，**不要重复发起标注**。
@@ -68,11 +67,11 @@ EditHere 是一个**本机桌面程序**，让用户在截图或设计图上直�
 
 ## 桌面访问与沙箱
 
-`status` / `open` / `capture` / `annotate*` 都需要连接当前登录用户的桌面。若执行环境是受限沙箱（退出码 8 `desktop_access_required`），应从第一次调用就选择允许访问桌面的执行方式，避免在沙箱里启动一个用户看不到的窗口。**不要**修改全局沙箱设置，也不要让程序自行提权。`--help`、`--version` 与离线 `export` 不需要桌面。
+`status` / `open` / `annotate*` 都需要连接当前登录用户的桌面。若执行环境是受限沙箱（退出码 8 `desktop_access_required`），应从第一次调用就选择允许访问桌面的执行方式，避免在沙箱里启动一个用户看不到的窗口。**不要**修改全局沙箱设置，也不要让程序自行提权。`--help`、`--version` 与离线 `export` 不需要桌面。
 
 `running:null` 表示状态未知，不能当作 `false`。
 
-0.9.6 与 0.9.7 的命令行按自己的程序名推算通信端点，与桌面程序使用的名字不同：桌面程序在运行，`status` 也返回 `running:false`，`open`、`capture`、`annotate` 报 `startup_timeout`。核对版本后升级到 0.9.8，不要循环重启桌面程序。
+0.9.6 与 0.9.7 的命令行按自己的程序名推算通信端点，与桌面程序使用的名字不同：桌面程序在运行，`status` 也返回 `running:false`，`open`、`annotate` 报 `startup_timeout`。核对版本后升级到 0.9.8，不要循环重启桌面程序。
 
 ## 解读反馈
 

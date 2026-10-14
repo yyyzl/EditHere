@@ -2,7 +2,6 @@
 #include "diagnosticspage.h"
 #include "diagnostics.h"
 #include "i18n.h"
-#include "ocr.h"
 #include "ui.h"
 #include "updatechecker.h"
 #include <QCheckBox>
@@ -76,21 +75,10 @@ SettingsDialog::SettingsDialog(const AppSettings &settings, QWidget *parent) : Q
     form->setHorizontalSpacing(24);
     form->setVerticalSpacing(10);
     form->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
-    bool globalSection = false, localSection = false;
+    shortcutLocalLabel_ = new QLabel(rows);
+    shortcutLocalLabel_->setObjectName("settingsSection");
+    form->addRow(shortcutLocalLabel_);
     for (const auto &definition : shortcutDefinitions()) {
-        if (definition.global && !globalSection) {
-            auto label = new QLabel(rows);
-            label->setObjectName("settingsSection");
-            shortcutGlobalLabel_ = label;
-            form->addRow(label);
-            globalSection = true;
-        } else if (!definition.global && !localSection) {
-            auto label = new QLabel(rows);
-            label->setObjectName("settingsSection");
-            shortcutLocalLabel_ = label;
-            form->addRow(label);
-            localSection = true;
-        }
         auto input = new QKeySequenceEdit(rows);
         input->setObjectName("shortcut_" + definition.id);
         input->setMaximumSequenceLength(1);
@@ -141,30 +129,11 @@ SettingsDialog::SettingsDialog(const AppSettings &settings, QWidget *parent) : Q
     language_->addItem({}, static_cast<int>(LanguageMode::English));
     language_->setMinimumHeight(36);
     appearanceLayout->addWidget(language_);
-    ocrTitle_ = new QLabel(appearance);
-    ocrTitle_->setObjectName("settingsSection");
-    appearanceLayout->addWidget(ocrTitle_);
-    auto ocrDescription = mutedLabel({}, appearance);
-    ocrDescription->setObjectName("ocrLanguageDescription");
-    ocrDescription->setWordWrap(true);
-    appearanceLayout->addWidget(ocrDescription);
-    ocrLanguage_ = new QComboBox(appearance);
-    ocrLanguage_->setObjectName("ocrLanguage");
-    // The reader and the interface offer the same three choices, so the stored value
-    // means the same thing on both sides.
-    ocrLanguage_->addItem({}, static_cast<int>(OcrLanguageMode::System));
-    ocrLanguage_->addItem({}, static_cast<int>(OcrLanguageMode::SimplifiedChinese));
-    ocrLanguage_->addItem({}, static_cast<int>(OcrLanguageMode::English));
-    ocrLanguage_->setMinimumHeight(36);
-    appearanceLayout->addWidget(ocrLanguage_);
-    appearanceLayout->addStretch();
     tabs->addTab(appearance, {});
     auto defaults = new QWidget;
     auto defaultsLayout = new QVBoxLayout(defaults);
     defaultsLayout->setContentsMargins(20, 22, 20, 20);
     defaultsLayout->setSpacing(18);
-    captureOnStartup_ = new QCheckBox(defaults);
-    captureOnStartup_->setObjectName("captureOnStartup");
     launchAtLogin_ = new QCheckBox(defaults);
     launchAtLogin_->setObjectName("launchAtLogin");
     fitImageOnOpen_ = new QCheckBox(defaults);
@@ -173,7 +142,6 @@ SettingsDialog::SettingsDialog(const AppSettings &settings, QWidget *parent) : Q
     embedOriginal_->setObjectName("defaultEmbedOriginal");
     confirmBeforeDiscard_ = new QCheckBox(defaults);
     confirmBeforeDiscard_->setObjectName("confirmBeforeDiscard");
-    defaultsLayout->addWidget(captureOnStartup_);
     auto loginLayout = new QVBoxLayout;
     loginLayout->setSpacing(6);
     loginLayout->addWidget(launchAtLogin_);
@@ -223,34 +191,6 @@ SettingsDialog::SettingsDialog(const AppSettings &settings, QWidget *parent) : Q
     defaultsLayout->addLayout(toolForm);
     defaultsLayout->addStretch();
     tabs->addTab(defaults, {});
-
-    auto scrollPage = new QWidget;
-    scrollPage->setObjectName("settingsScrollPage");
-    auto scrollLayout = new QVBoxLayout(scrollPage);
-    scrollLayout->setContentsMargins(20, 22, 20, 20);
-    scrollLayout->setSpacing(14);
-    auto scrollHint = new QLabel(scrollPage);
-    scrollHint->setObjectName("scrollSettingsHint");
-    scrollHint->setWordWrap(true);
-    scrollLayout->addWidget(scrollHint);
-    auto scrollForm = new QFormLayout;
-    scrollAxis_ = new QComboBox(scrollPage);
-    scrollAxis_->setObjectName("scrollDefaultAxis");
-    scrollAxis_->addItem({}, static_cast<int>(Qt::Vertical));
-    scrollAxis_->addItem({}, static_cast<int>(Qt::Horizontal));
-    auto axisLabel = new QLabel(scrollPage);
-    axisLabel->setObjectName("scrollAxisLabel");
-    axisLabel->setBuddy(scrollAxis_);
-    scrollForm->addRow(axisLabel, scrollAxis_);
-    scrollLayout->addLayout(scrollForm);
-    scrollAutoCrop_ = new QCheckBox(scrollPage);
-    scrollAutoCrop_->setObjectName("scrollDefaultAutoCrop");
-    scrollLayout->addWidget(scrollAutoCrop_);
-    scrollUltraLong_ = new QCheckBox(scrollPage);
-    scrollUltraLong_->setObjectName("scrollUltraLong");
-    scrollLayout->addWidget(scrollUltraLong_);
-    scrollLayout->addStretch();
-    tabs->addTab(scrollPage, {});
 
     auto toolbar = new QWidget;
     toolbar->setObjectName("settingsToolbarPage");
@@ -429,8 +369,6 @@ void SettingsDialog::retranslate() {
     setWindowTitle(tr("EditHere 设置"));
     if (auto title = findChild<QLabel *>("settingsTitle"))
         title->setText(tr("设置"));
-    if (shortcutGlobalLabel_)
-        shortcutGlobalLabel_->setText(tr("全局快捷键"));
     if (shortcutLocalLabel_)
         shortcutLocalLabel_->setText(tr("应用内快捷键"));
     const auto definitions = shortcutDefinitions();
@@ -440,12 +378,11 @@ void SettingsDialog::retranslate() {
         if (!input)
             continue;
         input->setAccessibleName(definitions[i].label + tr("快捷键"));
-        input->setToolTip(definitions[i].global ? tr("在其他应用中也可使用；清空则停用。")
-                                                : tr("在 EditHere 编辑窗口中使用；清空则停用。"));
+        input->setToolTip(tr("在 EditHere 编辑窗口中使用；清空则停用。"));
         if (auto field = input->findChild<QLineEdit *>())
             field->setPlaceholderText(tr("点击录制快捷键"));
     }
-    const QStringList tabTitles{tr("快捷键"), tr("外观"), tr("默认行为"), tr("长截图"),
+    const QStringList tabTitles{tr("快捷键"), tr("外观"), tr("默认行为"),
                                 tr("工具栏"), tr("关于与更新"), tr("诊断日志")};
     for (int i = 0; i < tabs_->count() && i < tabTitles.size(); ++i)
         tabs_->setTabText(i, tabTitles[i]);
@@ -465,16 +402,6 @@ void SettingsDialog::retranslate() {
     language_->setItemText(0, tr("跟随系统"));
     language_->setItemText(1, languageDisplayName(LanguageMode::SimplifiedChinese));
     language_->setItemText(2, languageDisplayName(LanguageMode::English));
-    if (ocrTitle_)
-        ocrTitle_->setText(tr("文字识别语言"));
-    if (auto description = findChild<QLabel *>("ocrLanguageDescription"))
-        description->setText(tr("截图后点击文字识别或按 T 时使用的语言。跟随系统由系统已安装的识别语言决定。"));
-    ocrLanguage_->setAccessibleName(tr("文字识别语言"));
-    ocrLanguage_->setItemText(0, tr("跟随系统"));
-    ocrLanguage_->setItemText(1, ocrLanguageLabel(OcrLanguageMode::SimplifiedChinese));
-    ocrLanguage_->setItemText(2, ocrLanguageLabel(OcrLanguageMode::English));
-    captureOnStartup_->setText(tr("启动后立即截图"));
-    captureOnStartup_->setToolTip(tr("关闭后启动时只驻留托盘；点击托盘或按全局快捷键开始截图。"));
     launchAtLogin_->setText(tr("开机时启动 EditHere"));
     launchAtLogin_->setToolTip(tr("请保留程序所在文件夹；移动后需重新设置。"));
     fitImageOnOpen_->setText(tr("打开图片时自动适应窗口"));
@@ -493,15 +420,6 @@ void SettingsDialog::retranslate() {
         hint->setText(tr("包含原图的 JSON 可独立还原。保存项目始终包含原图。"));
     if (auto label = findChild<QLabel *>("defaultToolLabel"))
         label->setText(tr("默认标注工具"));
-    if (auto hint = findChild<QLabel *>("scrollSettingsHint"))
-        hint->setText(tr("长截图默认由你滚动页面；截取时仍可切换方向和自动裁剪。"));
-    if (auto label = findChild<QLabel *>("scrollAxisLabel"))
-        label->setText(tr("默认截图方向"));
-    scrollAxis_->setItemText(0, tr("垂直"));
-    scrollAxis_->setItemText(1, tr("水平"));
-    scrollAutoCrop_->setText(tr("反向滚动时自动裁剪"));
-    scrollUltraLong_->setText(tr("超长截图（最长 200 万像素）"));
-    scrollUltraLong_->setToolTip(tr("分块采集并保存 PNG；超过编辑器图像上限时可保存，复制、贴图和编辑受图像大小限制。"));
     defaultTool_->setAccessibleName(tr("默认标注工具"));
     const QStringList tools{tr("智能选块"), tr("点标注"), tr("框选标注"), tr("调整批注")};
     for (int i = 0; i < defaultTool_->count() && i < tools.size(); ++i)
@@ -524,7 +442,7 @@ void SettingsDialog::retranslate() {
     if (versionLabel_)
         versionLabel_->setText(tr("EditHere · 改这里") + "  " EDITHERE_VERSION);
     if (auto description = findChild<QLabel *>("aboutDescription"))
-        description->setText(tr("截图、批注与布局调整，让设计修改意见更清楚。"));
+        description->setText(tr("图片批注与布局调整，让设计修改意见更清楚。"));
     if (auto license = findChild<QLabel *>("aboutLicense"))
         license->setText(tr(R"(<a href="https://github.com/Inginnng/EditHere/blob/codex/native/LICENSING.md">查看许可说明</a>)"));
     checkUpdatesOnStartup_->setText(tr("启动时检查更新"));
@@ -602,42 +520,30 @@ void SettingsDialog::setLaunchAtLoginNotice(const QString &notice) {
     launchAtLoginNotice_->setVisible(!notice.isEmpty());
 }
 void SettingsDialog::setDraft(const AppSettings &settings) {
-    captureStyle_ = settings.captureStyle;
     for (auto it = keys_.cbegin(); it != keys_.cend(); ++it)
         it.value()->setKeySequence(settings.shortcuts.value(it.key()));
     for (auto it = toolbarActions_.cbegin(); it != toolbarActions_.cend(); ++it)
         it.value()->setChecked(settings.toolbarActions.contains(it.key()));
     theme_->setCurrentIndex(theme_->findData(static_cast<int>(settings.theme)));
     language_->setCurrentIndex(language_->findData(static_cast<int>(settings.language)));
-    ocrLanguage_->setCurrentIndex(ocrLanguage_->findData(static_cast<int>(settings.ocrLanguage)));
-    captureOnStartup_->setChecked(settings.captureOnStartup);
     launchAtLogin_->setChecked(settings.launchAtLogin);
     fitImageOnOpen_->setChecked(settings.fitImageOnOpen);
     embedOriginal_->setChecked(settings.embedOriginal);
     confirmBeforeDiscard_->setChecked(settings.confirmBeforeDiscard);
     checkUpdatesOnStartup_->setChecked(settings.checkUpdatesOnStartup);
     feedbackDir_->setText(QDir::toNativeSeparators(settings.feedbackDir));
-    scrollAxis_->setCurrentIndex(scrollAxis_->findData(static_cast<int>(settings.scrollAxis)));
-    scrollAutoCrop_->setChecked(settings.scrollAutoCrop);
-    scrollUltraLong_->setChecked(settings.scrollUltraLong);
     defaultTool_->setCurrentIndex(settings.defaultTool);
 }
 AppSettings SettingsDialog::settings() const {
     AppSettings result;
-    result.captureStyle = captureStyle_;
-    result.captureOnStartup = captureOnStartup_->isChecked();
     result.launchAtLogin = launchAtLogin_->isChecked();
     result.fitImageOnOpen = fitImageOnOpen_->isChecked();
     result.embedOriginal = embedOriginal_->isChecked();
     result.confirmBeforeDiscard = confirmBeforeDiscard_->isChecked();
     result.checkUpdatesOnStartup = checkUpdatesOnStartup_->isChecked();
     result.feedbackDir = QDir::fromNativeSeparators(feedbackDir_->text().trimmed());
-    result.scrollAxis = static_cast<Qt::Orientation>(scrollAxis_->currentData().toInt());
-    result.scrollAutoCrop = scrollAutoCrop_->isChecked();
-    result.scrollUltraLong = scrollUltraLong_->isChecked();
     result.defaultTool = defaultTool_->currentIndex();
     result.language = static_cast<LanguageMode>(language_->currentData().toInt());
-    result.ocrLanguage = static_cast<OcrLanguageMode>(ocrLanguage_->currentData().toInt());
     result.theme = static_cast<ThemeMode>(theme_->currentData().toInt());
     result.toolbarActions.clear();
     for (const auto &definition : toolbarActionDefinitions())

@@ -7,9 +7,6 @@
 #include <QStandardPaths>
 namespace h2d {
 namespace {
-// Raised whenever the look a capture starts with changes, so a settings file written
-// before the change is not mistaken for one that asked for the old look.
-constexpr int kCaptureStyleVersion = 1;
 // Free functions have no tr(); the enclosing "h2d" context groups them so the
 // translation file stays easy to review.
 inline QString tr(const char *text) {
@@ -53,11 +50,6 @@ bool parseLanguage(const QString &name, LanguageMode *mode) {
         return false;
     return true;
 }
-// The recogniser and the interface use the same three choices, so they are stored
-// under the same names and only the type differs.
-QString languageName(OcrLanguageMode mode) {
-    return languageName(static_cast<LanguageMode>(mode));
-}
 QString validateToolbarActions(const QStringList &actions) {
     QSet<QString> known;
     for (const auto &definition : toolbarActionDefinitions())
@@ -79,28 +71,26 @@ bool validCombination(QKeyCombination combination) {
 }
 } // namespace
 QVector<ShortcutDefinition> shortcutDefinitions() {
-    return {{"capture", tr("截图"), true, QKeySequence(Qt::ALT | Qt::SHIFT | Qt::Key_2)},
-            {"annotate", tr("新建批注（空窗口）"), true, QKeySequence(Qt::ALT | Qt::SHIFT | Qt::Key_1)},
-            {"open", tr("打开图片或项目"), false, QKeySequence(QKeySequence::Open)},
-            {"paste", tr("粘贴图片"), false, QKeySequence(QKeySequence::Paste)},
-            {"save", tr("保存项目"), false, QKeySequence(QKeySequence::Save)},
-            {"export", tr("查看 JSON"), false, QKeySequence(Qt::CTRL | Qt::Key_E)},
-            {"copy", tr("复制带批注图片"), false, QKeySequence(QKeySequence::Copy)},
-            {"copyJson", tr("复制 JSON 文件"), false, {}},
-            {"saveImage", tr("保存图片"), false, {}},
-            {"hideAnnotations", tr("隐藏 / 显示批注标记"), false, {}},
-            {"addGlobalNote", tr("添加全局批注"), false, {}},
-            {"undo", tr("撤销"), false, QKeySequence(QKeySequence::Undo)},
-            {"redo", tr("重做"), false, QKeySequence(QKeySequence::Redo)},
-            {"fit", tr("适应窗口"), false, QKeySequence(Qt::CTRL | Qt::Key_0)},
-            {"delete", tr("删除所选批注"), false, QKeySequence(Qt::Key_Delete)},
-            {"close", tr("取消操作 / 关闭截图"), false, QKeySequence(Qt::Key_Escape)},
-            {"smart", tr("智能选块"), false, QKeySequence(Qt::Key_B)},
-            {"point", tr("点标注"), false, QKeySequence(Qt::Key_P)},
-            {"rectangle", tr("框选标注"), false, QKeySequence(Qt::Key_R)},
-            {"adjust", tr("调整批注"), false, QKeySequence(Qt::Key_V)},
-            {"explode", tr("切换大爆炸"), false, QKeySequence(Qt::Key_E)},
-            {"component", tr("调整组件"), false, QKeySequence(Qt::Key_M)}};
+    return {{"open", tr("打开图片或项目"), QKeySequence(QKeySequence::Open)},
+            {"paste", tr("粘贴图片"), QKeySequence(QKeySequence::Paste)},
+            {"save", tr("保存项目"), QKeySequence(QKeySequence::Save)},
+            {"export", tr("查看 JSON"), QKeySequence(Qt::CTRL | Qt::Key_E)},
+            {"copy", tr("复制带批注图片"), QKeySequence(QKeySequence::Copy)},
+            {"copyJson", tr("复制 JSON 文件"), {}},
+            {"saveImage", tr("保存图片"), {}},
+            {"hideAnnotations", tr("隐藏 / 显示批注标记"), {}},
+            {"addGlobalNote", tr("添加全局批注"), {}},
+            {"undo", tr("撤销"), QKeySequence(QKeySequence::Undo)},
+            {"redo", tr("重做"), QKeySequence(QKeySequence::Redo)},
+            {"fit", tr("适应窗口"), QKeySequence(Qt::CTRL | Qt::Key_0)},
+            {"delete", tr("删除所选批注"), QKeySequence(Qt::Key_Delete)},
+            {"close", tr("取消操作 / 关闭白板"), QKeySequence(Qt::Key_Escape)},
+            {"smart", tr("智能选块"), QKeySequence(Qt::Key_B)},
+            {"point", tr("点标注"), QKeySequence(Qt::Key_P)},
+            {"rectangle", tr("框选标注"), QKeySequence(Qt::Key_R)},
+            {"adjust", tr("调整批注"), QKeySequence(Qt::Key_V)},
+            {"explode", tr("切换大爆炸"), QKeySequence(Qt::Key_E)},
+            {"component", tr("调整组件"), QKeySequence(Qt::Key_M)}};
 }
 QVector<ToolbarActionDefinition> toolbarActionDefinitions() {
     return {{"saveProject", tr("保存项目")},
@@ -109,7 +99,6 @@ QVector<ToolbarActionDefinition> toolbarActionDefinitions() {
             {"copyJsonText", tr("复制 JSON 内容")},
             {"copyJson", tr("复制 JSON 文件")},
             {"copyImage", tr("复制带批注图片")},
-            {"capture", tr("重新截图")},
             {"fit", tr("适应图片")}};
 }
 AppSettings defaultSettings() {
@@ -135,8 +124,6 @@ QString validateSettings(const AppSettings &settings) {
         if (info.isFile())
             return tr("反馈临时目录不能指向一个已有文件。");
     }
-    if (settings.scrollAxis != Qt::Vertical && settings.scrollAxis != Qt::Horizontal)
-        return tr("请选择有效的长截图方向。");
     QMap<int, QString> assigned;
     const auto definitions = shortcutDefinitions();
     for (const auto &definition : definitions) {
@@ -148,12 +135,6 @@ QString validateSettings(const AppSettings &settings) {
         if (sequence.count() != 1 || !validCombination(sequence[0]))
             return tr("“%1”只支持一个有效的组合键。").arg(definition.label);
         const auto combination = sequence[0];
-        const auto key = combination.key();
-        const auto modifiers = combination.keyboardModifiers();
-        if (definition.global && !(modifiers & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier)) &&
-            !(key >= Qt::Key_F1 && key <= Qt::Key_F24) && key != Qt::Key_Print)
-            return tr("“%1”快捷键需要包含 Ctrl、Alt 或 Command / Win，或使用 F1–F24、Print Screen。")
-                .arg(definition.label);
         const auto code = combination.toCombined();
         if (assigned.contains(code))
             return tr("“%1”和“%2”使用了相同的快捷键 %3。")
@@ -185,16 +166,6 @@ AppSettings loadSettings(const QString &filePath) {
     if (source.contains("appearance/language") &&
         !parseLanguage(source.value("appearance/language").toString(), &result.language))
         return defaultSettings();
-    // The recogniser language arrived after the first settings file did, so a
-    // value that cannot be read leaves the default in place instead of resetting
-    // everything the user configured.
-    const auto ocr = source.value("appearance/ocrLanguage", "system").toString();
-    if (ocr == "zh_CN")
-        result.ocrLanguage = OcrLanguageMode::SimplifiedChinese;
-    else if (ocr == "en")
-        result.ocrLanguage = OcrLanguageMode::English;
-    else if (ocr == "system")
-        result.ocrLanguage = OcrLanguageMode::System;
     // Missing or malformed new preferences keep their individual defaults on upgrade.
     auto boolean = [&](const QString &key, bool fallback) {
         const auto value = source.value(key).toString().toLower();
@@ -204,48 +175,15 @@ AppSettings loadSettings(const QString &filePath) {
             return false;
         return fallback;
     };
-    result.captureOnStartup = boolean("defaults/captureOnStartup", true);
     result.launchAtLogin = boolean("defaults/launchAtLogin", false);
     result.fitImageOnOpen = boolean("defaults/fitImageOnOpen", true);
     result.embedOriginal = boolean("defaults/embedOriginal", true);
     result.confirmBeforeDiscard = boolean("defaults/confirmBeforeDiscard", true);
     result.checkUpdatesOnStartup = boolean("updates/checkOnStartup", true);
-    const QString scrollAxis = source.value("capture/scrollAxis", QStringLiteral("vertical")).toString();
-    result.scrollAxis = scrollAxis == QLatin1String("horizontal") ? Qt::Horizontal : Qt::Vertical;
-    result.scrollAutoCrop = boolean("capture/scrollAutoCrop", false);
-    result.scrollUltraLong = boolean("capture/scrollUltraLong", false);
-    // The capture style arrived after the first settings file did, so a missing key
-    // means "the built-in look" rather than "the user turned it off".
-    bool numeric = false;
-    const auto radius = source.value("capture/cornerRadius", result.captureStyle.cornerRadius).toInt(&numeric);
-    if (numeric && radius >= 0 && radius <= 100)
-        result.captureStyle.cornerRadius = radius;
-    const auto borderWidth =
-        source.value("capture/borderWidth", result.captureStyle.borderWidth).toInt(&numeric);
-    if (numeric && borderWidth >= 0 && borderWidth <= 100)
-        result.captureStyle.borderWidth = borderWidth;
-    const auto strength =
-        source.value("capture/shadowStrength", result.captureStyle.shadowStrength).toInt(&numeric);
-    if (numeric && strength >= 0 && strength <= 100)
-        result.captureStyle.shadowStrength = strength;
-    result.captureStyle.border = boolean("capture/border", result.captureStyle.border);
-    const QColor borderColor(source.value("capture/borderColor").toString());
-    if (borderColor.isValid())
-        result.captureStyle.borderColor = borderColor;
-    const QColor shadowColor(source.value("capture/shadowColor").toString());
-    if (shadowColor.isValid())
-        result.captureStyle.shadowColor = shadowColor;
-    // The shadow used to start switched off, and settings files written back then say
-    // so. That "off" was never a choice anybody made, so it is only honoured from a
-    // file that was written after the default changed; without this marker an upgrade
-    // would quietly keep the old look and the shadow would stay invisible.
-    const int styleVersion = source.value("capture/styleVersion", 0).toInt(&numeric);
-    if (numeric && styleVersion >= 1)
-        result.captureStyle.shadow = boolean("capture/shadow", result.captureStyle.shadow);
-    if (source.contains("defaults/feedbackDir"))
-        result.feedbackDir = source.value("defaults/feedbackDir").toString();
+    result.feedbackDir = source.value("defaults/feedbackDir").toString();
     if (source.contains("toolbar/actions")) {
-        const auto actions = source.value("toolbar/actions").toStringList();
+        auto actions = source.value("toolbar/actions").toStringList();
+        actions.removeAll("capture");
         if (validateToolbarActions(actions).isEmpty())
             result.toolbarActions = actions;
     }
@@ -262,17 +200,6 @@ AppSettings loadSettings(const QString &filePath) {
         if (!text.isEmpty() && sequence.isEmpty())
             return defaultSettings();
         result.shortcuts[definition.id] = sequence;
-    }
-    // An upgrade must not replace the user's settings if an existing shortcut
-    // already uses the new annotation default. They can choose another key later.
-    if (!source.contains("shortcuts/annotate")) {
-        const auto annotationKey = result.shortcuts.value("annotate");
-        for (auto it = result.shortcuts.cbegin(); it != result.shortcuts.cend(); ++it) {
-            if (it.key() != "annotate" && it.value() == annotationKey) {
-                result.shortcuts["annotate"] = {};
-                break;
-            }
-        }
     }
     if (source.status() != QSettings::NoError || !validateSettings(result).isEmpty())
         return defaultSettings();
@@ -293,8 +220,12 @@ bool saveSettings(const AppSettings &settings, QString *error, const QString &fi
     }
     QSettings target(path, QSettings::IniFormat);
     target.setAtomicSyncRequired(true);
+    target.remove("capture");
+    target.remove("appearance/ocrLanguage");
+    target.remove("defaults/captureOnStartup");
+    target.remove("shortcuts/capture");
+    target.remove("shortcuts/annotate");
     target.setValue("version", 1);
-    target.setValue("defaults/captureOnStartup", settings.captureOnStartup);
     target.setValue("defaults/launchAtLogin", settings.launchAtLogin);
     target.setValue("defaults/fitImageOnOpen", settings.fitImageOnOpen);
     target.setValue("defaults/embedOriginal", settings.embedOriginal);
@@ -302,25 +233,8 @@ bool saveSettings(const AppSettings &settings, QString *error, const QString &fi
     target.setValue("defaults/tool", settings.defaultTool);
     target.setValue("updates/checkOnStartup", settings.checkUpdatesOnStartup);
     target.setValue("defaults/feedbackDir", settings.feedbackDir);
-    target.setValue("capture/scrollAxis", settings.scrollAxis == Qt::Horizontal ? "horizontal" : "vertical");
-    target.setValue("capture/scrollAutoCrop", settings.scrollAutoCrop);
-    target.setValue("capture/scrollUltraLong", settings.scrollUltraLong);
     target.setValue("appearance/theme", themeName(settings.theme));
     target.setValue("appearance/language", languageName(settings.language));
-    target.setValue("appearance/ocrLanguage", languageName(settings.ocrLanguage));
-    // The capture style is written as plain numbers so a settings file stays readable
-    // and hand-editable, the same way every other key in it is.
-    target.setValue("capture/cornerRadius", settings.captureStyle.cornerRadius);
-    target.setValue("capture/border", settings.captureStyle.border);
-    target.setValue("capture/borderWidth", settings.captureStyle.borderWidth);
-    target.setValue("capture/borderColor", settings.captureStyle.borderColor.name(QColor::HexArgb));
-    target.setValue("capture/shadow", settings.captureStyle.shadow);
-    target.setValue("capture/shadowStrength", settings.captureStyle.shadowStrength);
-    target.setValue("capture/shadowColor", settings.captureStyle.shadowColor.isValid()
-        ? settings.captureStyle.shadowColor.name(QColor::HexArgb) : QString());
-    // Written so a later change of the built-in look can tell a file that never had a
-    // say from one that did.
-    target.setValue("capture/styleVersion", kCaptureStyleVersion);
     target.setValue("toolbar/actions", settings.toolbarActions);
     for (const auto &definition : shortcutDefinitions())
         target.setValue("shortcuts/" + definition.id,

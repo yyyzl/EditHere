@@ -78,7 +78,6 @@ QString toolbarGlyph(const QString &id) {
     if (id == "copyJson") return "json-copy-file";
     if (id == "copyJsonText") return "json-copy-text";
     if (id == "exportJson") return "json";
-    if (id == "capture") return "capture";
     if (id == "fit") return "fit";
     if (id == "copyImage") return "image-copy";
     qWarning() << "Unknown toolbar action:" << id;
@@ -190,8 +189,6 @@ Editor::Editor(QWidget *parent) : QWidget(parent) {
     explosion_->setCheckable(true);
     header->addWidget(explosion_);
     connect(explosion_, &QPushButton::clicked, this, &Editor::explode);
-    auto capture = iconButton("capture", {}, bar);
-    capture->setObjectName("captureImage");
     auto help = iconButton("help", {}, bar);
     help->setObjectName("showGuide");
     connect(help, &QPushButton::clicked, this, &Editor::showGuide);
@@ -211,13 +208,11 @@ Editor::Editor(QWidget *parent) : QWidget(parent) {
     auto close = iconButton("close", {}, bar);
     close->setObjectName("closeWindow");
     header->addWidget(open);
-    header->addWidget(capture);
     header->addWidget(settings);
     header->addWidget(help);
     header->addWidget(minimize);
     header->addWidget(fullscreen_);
     header->addWidget(close);
-    connect(capture, &QPushButton::clicked, this, &Editor::captureRequested);
     connect(open, &QPushButton::clicked, this, [this] { openFile(); });
     connect(minimize, &QPushButton::clicked, this, &QWidget::showMinimized);
     connect(fullscreen_, &QPushButton::clicked, this, &Editor::toggleFullscreen);
@@ -435,7 +430,6 @@ Editor::Editor(QWidget *parent) : QWidget(parent) {
         else if (definition.id == "copyJsonText") connect(button, &QPushButton::clicked, this, &Editor::copyJsonText);
         else if (definition.id == "copyJson") connect(button, &QPushButton::clicked, this, &Editor::copyJson);
         else if (definition.id == "exportJson") connect(button, &QPushButton::clicked, this, &Editor::exportJson);
-        else if (definition.id == "capture") connect(button, &QPushButton::clicked, this, &Editor::captureRequested);
         else if (definition.id == "fit") connect(button, &QPushButton::clicked, this, &Editor::fit);
         else if (definition.id == "copyImage") connect(button, &QPushButton::clicked, this, &Editor::copyImage);
     }
@@ -532,13 +526,12 @@ void Editor::retranslate() {
             button->setAccessibleName(text);
         }
     };
-    tooltip("captureImage", tr("重新截图"));
     tooltip("showGuide", tr("使用引导"));
     tooltip("importDocument", tr("导入图片、视频或项目"));
     tooltip("openSettings", tr("设置"));
     tooltip("minimizeWindow", tr("最小化"));
     tooltip("fullscreenWindow", tr("全屏"));
-    tooltip("closeWindow", tr("关闭当前截图"));
+    tooltip("closeWindow", tr("关闭批注白板"));
     tooltip("addGlobalNote", tr("添加全局批注"));
     tooltip("zoomOut", tr("缩小"));
     tooltip("zoomIn", tr("放大"));
@@ -668,7 +661,7 @@ void Editor::setDocument(Document document, const QString &projectPath) {
         if (isMinimized()) setWindowState(windowState() & ~Qt::WindowMinimized);
         show();
     }
-    if (!preserveView) configureNativeWindow(this, false);
+    if (!preserveView) configureNativeWindow(this);
     QRect available = QGuiApplication::screenAt(QCursor::pos())
                           ? QGuiApplication::screenAt(QCursor::pos())->availableGeometry()
                           : QGuiApplication::primaryScreen()->availableGeometry();
@@ -746,7 +739,7 @@ void Editor::setVideoProject(VideoProject project, const QString &path) {
     doc_ = {}; canvas_->setDocument(nullptr); undoHistory_.clear(); redoHistory_.clear();
     videoPlayback_->show();
     renderNotes(); updateControls(); updateEmptyState();
-    show(); configureNativeWindow(this, false); raise(); activateWindow();
+    show(); configureNativeWindow(this); raise(); activateWindow();
     if (!video_->frames.isEmpty()) {
         // Review is available independently of source-video availability.
         const auto frame = video_->frames.first();
@@ -1040,7 +1033,7 @@ void Editor::updateToolbar() {
     // Keep the permanent tools accessible when optional actions exceed the window width.
     if (dock_) {
         dock_->invalidate();
-        const QStringList overflowOrder{"fit", "capture", "copyImage", "saveImage", "exportJson", "saveProject", "copyJsonText", "copyJson"};
+        const QStringList overflowOrder{"fit", "copyImage", "saveImage", "exportJson", "saveProject", "copyJsonText", "copyJson"};
         for (const auto &id : overflowOrder) {
             if (dock_->sizeHint().width() <= width()-2) break;
             if (auto button = outputButtons_.value(id); button && !button->isHidden()) {
@@ -1078,7 +1071,7 @@ void Editor::updateControls() {
     notesToggle_->setChecked(!detailsStack_->isHidden());
     notesToggle_->setToolTip(detailsStack_->isHidden() ? tr("展开批注框") : tr("收起批注框"));
     for (auto it = outputButtons_.begin(); it != outputButtons_.end(); ++it)
-        it.value()->setEnabled(it.key()=="capture" || hasDocument() || video_.has_value());
+        it.value()->setEnabled(hasDocument() || video_.has_value());
     hideAnnotations_->setEnabled(hasDocument());
 }
 QString Editor::coords(const Note &n) const {
@@ -1816,7 +1809,7 @@ bool Editor::hasUnsavedChanges() {
     finishNoteEdit();
     // Agent requests also protect images that exist only in this editor.
     return doc_.dirty || (video_ && video_->dirty) || (hasDocument() && projectPath_.isEmpty() &&
-                          (doc_.source == "screen" || doc_.source == "clipboard"));
+                          (doc_.source == "clipboard"));
 }
 QByteArray Editor::agentFeedback(bool embed) {
     finishNoteEdit();
@@ -1860,7 +1853,7 @@ void Editor::openEmpty() {
     if (isMinimized())
         setWindowState(windowState() & ~Qt::WindowMinimized);
     show();
-    configureNativeWindow(this, false);
+    configureNativeWindow(this);
     raise();
     activateWindow();
 }
@@ -2182,7 +2175,7 @@ void Editor::showContext(QPoint p) {
     }
     menu.addSeparator();
     menu.addAction(glyph("open"),tr("导入图片、视频或项目"),this,[this] { openFile(); });
-    menu.addAction(glyph("close"),tr("关闭当前截图"),this,&QWidget::close);
+    menu.addAction(glyph("close"),tr("关闭批注白板"),this,&QWidget::close);
     menu.exec(p);
 }
 void Editor::closeEvent(QCloseEvent *e) {

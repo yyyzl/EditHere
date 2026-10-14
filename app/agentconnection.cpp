@@ -43,7 +43,7 @@ QString legacyDesktopServerName() {
     // Shares agentStateLocation() with the Agent endpoint: both names have to be reached from
     // any process identity, not just from the GUI that listens on them.
     const auto state = agentStateLocation();
-    return "EditHere-native-" + QString::number(qHash(state));
+    return "EditHere-wb-native-" + QString::number(qHash(state));
 }
 void receiveDesktopRequest(QLocalSocket &socket, QObject &receiver,
                            const std::function<void(const QString &)> &dispatch, int timeoutMs) {

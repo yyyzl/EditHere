@@ -1,4 +1,3 @@
-#include "capturetoolbar.h"
 #include "ui.h"
 #include <QApplication>
 #include <QDir>
@@ -66,10 +65,10 @@ int main(int argc, char **argv) {
         painter.end();
         const auto suffix = dark ? QStringLiteral("dark") : QStringLiteral("light");
         if (!sheet.save(output.filePath(QStringLiteral("icons-%1.png").arg(suffix)))) return 2;
-        const QStringList primaryNames{"scroll", "image-save", "settings", "open", "ocr"};
-        const QStringList primaryLabels{QStringLiteral("长截图"), QStringLiteral("保存图片"),
+        const QStringList primaryNames{"point", "image-save", "settings", "open", "explode"};
+        const QStringList primaryLabels{QStringLiteral("点批注"), QStringLiteral("保存图片"),
                                         QStringLiteral("设置"), QStringLiteral("打开文件"),
-                                        QStringLiteral("文字识别")};
+                                        QStringLiteral("布局调整")};
         QImage primary(5 * cellWidth, cellHeight, QImage::Format_ARGB32_Premultiplied);
         primary.fill(face);
         QPainter primaryPainter(&primary);
@@ -86,40 +85,7 @@ int main(int argc, char **argv) {
         primaryPainter.end();
         if (!primary.save(output.filePath(QStringLiteral("icons-main-%1.png").arg(suffix)))) return 2;
 
-        h2d::CaptureToolbar toolbar;
-        toolbar.setSelectionSize(QSize(720, 480));
-        toolbar.show();
-        application.processEvents();
-        if (!toolbar.grab().save(output.filePath(QStringLiteral("capture-toolbar-%1.png").arg(suffix)))) return 3;
 
-        QImage picture = argc > 2 ? QImage(QString::fromLocal8Bit(argv[2])) : QImage();
-        if (picture.isNull()) {
-            picture = QImage(480, 1180, QImage::Format_RGB32);
-            picture.fill(QColor("#ffffff"));
-            QPainter content(&picture);
-            content.fillRect(QRect(0, 0, 480, 60), QColor("#e5efff"));
-            content.setPen(QColor("#232326"));
-            content.drawText(QRect(20, 10, 440, 40), Qt::AlignVCenter, QStringLiteral("EditHere · 长截图预览"));
-            for (int row = 0; row < 14; ++row) {
-                const int y = 82 + row * 74;
-                content.fillRect(QRect(20, y, 440, 52), QColor(row % 2 ? "#f5f5f7" : "#e5efff"));
-                content.drawText(QRect(36, y, 404, 52), Qt::AlignVCenter,
-                                 QStringLiteral("已拼接的内容 · %1").arg(row + 1));
-            }
-        }
-        h2d::ScrollCaptureProgress progress;
-        progress.setAutomatic(false);
-        progress.setProgress(picture, 3);
-        progress.show();
-        application.processEvents();
-        if (!progress.grab().save(output.filePath(QStringLiteral("long-capture-manual-%1.png").arg(suffix)))) return 3;
-        progress.setAutomatic(true);
-        progress.setProgress(picture, 3);
-        application.processEvents();
-        if (!progress.grab().save(output.filePath(QStringLiteral("long-capture-auto-%1.png").arg(suffix)))) return 3;
-        progress.setStopped(QStringLiteral("已停止，可以完成当前长截图。"));
-        application.processEvents();
-        if (!progress.grab().save(output.filePath(QStringLiteral("long-capture-paused-%1.png").arg(suffix)))) return 3;
     }
     QTextStream(stdout) << output.absolutePath() << '\n';
     return 0;

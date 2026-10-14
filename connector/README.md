@@ -28,7 +28,6 @@ connector/
 | --- | --- | --- |
 | `edithere_status` | `status` | 查询 EditHere 运行与文档状态，不启动 GUI。响应中附带连接器版本与实际使用的 CLI 路径 |
 | `edithere_open` | `open <path>` | 打开图片、视频或 `.edithere` 项目（含视频项目，仅请求受理） |
-| `edithere_capture` | `capture` | 唤起截图（仅请求受理） |
 | `edithere_annotate_start` | `annotate` | 发起标注会话并**立即返回会话 ID**，不阻塞 |
 | `edithere_annotate_poll` | — | 查询会话；用户提交后返回反馈摘要 |
 | `edithere_annotate` | `annotate` | 发起标注会话并**阻塞等待**用户点击"完成并返回 AI" |
@@ -56,7 +55,7 @@ connector/
 
 ## 前置条件：本机需已安装 EditHere
 
-连接器只是适配层，**不包含 EditHere 程序本体**。程序缺失时所有需要桌面的工具都会返回 `edithere-cli 不可用`，并附带安装指引。安装入口：<https://github.com/Inginnng/EditHere/releases/latest>。
+连接器只是适配层，**不包含 EditHere 程序本体**。程序缺失时所有需要桌面的工具都会返回 `edithere-cli 不可用`，并附带安装指引。安装入口：<https://github.com/yyyzl/EditHere/releases/latest>。
 
 ## CLI 定位顺序
 
@@ -118,7 +117,7 @@ node connector/mcp-server.mjs
 
 ## 注意事项
 
-- `status` / `open` / `capture` / `annotate*` 需要连接当前登录用户的桌面；受限沙箱中的 Agent 可能返回 `desktop_access_required`（退出码 8）。离线 `export`、`--help` 不依赖桌面。
+- `status` / `open` / `annotate*` 需要连接当前登录用户的桌面；受限沙箱中的 Agent 可能返回 `desktop_access_required`（退出码 8）。离线 `export`、`--help` 不依赖桌面。
 - 每次标注/导出都会生成**尚不存在**的唯一输出路径，不覆盖已有文件；取消或超时不产生反馈。
 - 同一时刻只支持一个标注会话：会话进行中再次发起会返回 `busy`（退出码 4）。等待期间可以正常调用 `status` 等其他工具。
 - 非阻塞会话只存在于连接器进程内；连接器重启后旧 `sessionId` 失效并会明确报错，需重新发起。
@@ -133,6 +132,6 @@ node connector/mcp-server.mjs
 
 - 0.2.0：新增 `edithere_annotate_start` / `edithere_annotate_poll` 非阻塞会话；CLI 缺失时附安装指引；补齐 WorkBuddy 连接器提交包（`connector-meta.json` / `mcp.json` / `icon.svg` / `skills`）。
 - 0.1.1：`EDITHERE_CLI` 失效时明确报错而非静默回退；必填参数前置校验；`edithere_status` 与失败信息回显实际使用的 CLI 路径与来源；`edithere_annotate` 说明并发限制。
-- 0.1.0：首次提供 `status` / `open` / `capture` / `annotate` / `export` 五个工具。
+- 0.1.0：首次提供 `status` / `open` / `annotate` / `export` 五个工具。
 
-连接器版本独立于 EditHere 程序版本（当前程序 0.11.1）；两者的版本号会同时出现在 `edithere_status` 响应中。
+连接器版本独立于 EditHere 程序版本（当前程序 0.12.0）；两者的版本号会同时出现在 `edithere_status` 响应中。
