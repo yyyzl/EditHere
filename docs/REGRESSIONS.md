@@ -396,3 +396,11 @@ Linux 专项 `linux_platform_tests` 在独立 DBus 会话中覆盖开机启动�
 ## WB-002 · macOS 关闭窗口后 Dock 无法恢复
 
 白板关闭后隐藏窗口并驻留后台，旧实现只处理托盘点击与第二次进程启动的 IPC 激活，没有接入 macOS 点击 Dock 时 Qt 发出的 `applicationStateChanged(ApplicationActive)` 通知。增加该连接，记录窗口关闭到后台后再允许激活恢复，避免后台启动误弹。`startup-flow::dockActivationReopensClosedWhiteboardRepeatedly` 覆盖重复关闭恢复；`applicationActivationKeepsBackgroundStartupHidden` 覆盖后台启动；`dockActivationPreservesCancelledAgentDocument` 覆盖 AI 取消后的素材保留。macOS 测试通过应用通知验证实际连接，其他平台直接验证同一处理逻辑。`macos-dock-reopen` 在 Cocoa 后端直接调用 AppKit 的 Dock 再次打开入口，验证原生通知到白板恢复的完整路径，并覆盖原生初始激活时后台不弹窗。
+
+## WB-003 · macOS DMG 顶层混入辅助材料
+
+旧 DMG 直接收录整个分发目录，导致说明、许可、skill、schema 和版本文件混在应用与安装快捷入口之间；用户只拖走应用时也没有带走这些材料。改为只收录 `.app` 与 Applications 链接，将辅助材料放入 `Contents/Resources`，由 dmgbuild 固化图标布局。`scripts/check-macos-package.py` 在在线 Mac 构建中挂载最终 DMG，检查可见入口、链接、布局、版本和资源，再复制应用并推出 DMG，验证签名与包内 CLI 可独立运行。
+
+## WB-004 · Windows 安装器界面检查误判页面已就绪
+
+0.12.2 发布验证曾在组件页文字已出现、树控件还未进入快照时立即断言失败。组件页和目录页改为等待文字与对应控件同时就绪，保留原先必须出现真实控件的检查条件。由 `installer_ui_flow_test.py::test_first_install_shows_location_options_then_real_progress_and_finish` 在隔离桌面验证。

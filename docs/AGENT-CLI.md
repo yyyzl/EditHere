@@ -54,7 +54,7 @@ macOS 的命令名是 `edithere-cli`，随应用部署在 `EditHere.app/Contents
 /Applications/EditHere.app/Contents/MacOS/edithere-cli --help
 ```
 
-若应用放在 `~/Applications` 或其他稳定位置，请相应调整路径；也可自行将 CLI 加入 PATH。Mac 的屏幕录制、辅助功能授权与实机验收状态见[平台边界](USER-GUIDE.md#识别与平台边界)。
+若应用放在 `~/Applications` 或其他稳定位置，请相应调整路径；也可自行将 CLI 加入 PATH。配套技能和数据格式分别位于应用包的 `Contents/Resources/skills/` 与 `Contents/Resources/schema/`，随拖拽安装一同保留。纯批注白板不申请屏幕录制或辅助功能权限。
 
 ## Windows Agent 的桌面访问
 

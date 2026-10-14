@@ -32,20 +32,29 @@ output="$project_root/dist/EditHere-$build_version-macos-universal"
 if [[ -e "$output" || -e "$output.dmg" ]]; then printf '%s\n' "Output folder or DMG already exists: $output" >&2; exit 1; fi
 mkdir -p "$output"
 cp -R "$build_path/EditHere.app" "$output/"
-cp "$build_path/version.txt" "$output/"
-cp "$build_path/edithere-cli" "$output/EditHere.app/Contents/MacOS/edithere-cli"
-"$QT_ROOT/bin/macdeployqt" "$output/EditHere.app" -always-overwrite -executable="$output/EditHere.app/Contents/MacOS/edithere-cli"
-ln -s /Applications "$output/Applications"
-cp -R "$project_root/skills" "$output/"
-sed -e 's|../skills/|skills/|g' -e 's|../schema/|schema/|g' -e 's|../README.md|https://github.com/yyyzl/EditHere|g' -e 's|USER-GUIDE.md|https://github.com/yyyzl/EditHere/blob/codex/annotation-whiteboard/docs/USER-GUIDE.md|g' "$project_root/docs/AGENT-CLI.md" > "$output/AGENT-CLI.md"
-cp -R "$project_root/packaging/licenses" "$output/"
-mkdir -p "$output/licenses/ui-icons"
-cp "$project_root/assets/ui-icons/LICENSE" "$output/licenses/ui-icons/"
-cp -R "$project_root/schema" "$output/"
-cp "$project_root/packaging/使用说明.txt" "$project_root/packaging/THIRD-PARTY-NOTICES.md" "$output/"
-cp "$project_root/LICENSE" "$project_root/LICENSING.md" "$project_root/COMMERCIAL-LICENSE.md" "$project_root/NOTICE" "$output/"
-sed 's|packaging/THIRD-PARTY-NOTICES.md|THIRD-PARTY-NOTICES.md|g' "$project_root/LICENSING.md" > "$output/LICENSING.md"
+application="$output/EditHere.app"
+resources="$application/Contents/Resources"
+mkdir -p "$resources"
+cp "$build_path/version.txt" "$resources/"
+cp "$build_path/edithere-cli" "$application/Contents/MacOS/edithere-cli"
+"$QT_ROOT/bin/macdeployqt" "$application" -always-overwrite -executable="$application/Contents/MacOS/edithere-cli"
+cp -R "$project_root/skills" "$project_root/schema" "$project_root/packaging/licenses" "$resources/"
+mkdir -p "$resources/licenses/ui-icons" "$resources/licenses/dmgbuild"
+cp "$project_root/assets/ui-icons/LICENSE" "$resources/licenses/ui-icons/"
+cp "$project_root/packaging/dmgbuild-LICENSE.txt" "$resources/licenses/dmgbuild/LICENSE"
+for guide in AGENT-CLI.md AGENT-CLI.en.md; do
+  sed -e 's|../skills/|skills/|g' -e 's|../schema/|schema/|g' \
+    -e 's|../README.en.md|https://github.com/yyyzl/EditHere/blob/codex/annotation-whiteboard/README.en.md|g' \
+    -e 's|../README.md|https://github.com/yyyzl/EditHere|g' \
+    -e 's|USER-GUIDE.en.md|https://github.com/yyyzl/EditHere/blob/codex/annotation-whiteboard/docs/USER-GUIDE.en.md|g' \
+    -e 's|USER-GUIDE.md|https://github.com/yyyzl/EditHere/blob/codex/annotation-whiteboard/docs/USER-GUIDE.md|g' \
+    "$project_root/docs/$guide" > "$resources/$guide"
+done
+cp "$project_root/packaging/使用说明.txt" "$project_root/packaging/THIRD-PARTY-NOTICES.md" "$resources/"
+cp "$project_root/LICENSE" "$project_root/COMMERCIAL-LICENSE.md" "$project_root/NOTICE" "$project_root/TRADEMARK-POLICY.md" "$resources/"
+sed 's|packaging/THIRD-PARTY-NOTICES.md|THIRD-PARTY-NOTICES.md|g' "$project_root/LICENSING.md" > "$resources/LICENSING.md"
 # Local test signing only. Distribution signing/notarization needs the product owner's Apple identity.
-codesign --force --deep --sign - "$output/EditHere.app"
-hdiutil create -volname EditHere -srcfolder "$output" -format UDZO "$output.dmg"
+codesign --force --deep --sign - "$application"
+python3 -m dmgbuild -s "$project_root/packaging/macos-dmg.py" -D "app=$application" EditHere "$output.dmg"
+python3 "$project_root/scripts/check-macos-package.py" "$output.dmg" --version "$build_version"
 printf '%s\n' "Local test build: $output.dmg"

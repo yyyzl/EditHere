@@ -77,6 +77,8 @@ Use the generated `manifest.json` to check the collected versions, sources, SHA-
 
 The Windows ZIP keeps the application, DLLs and plugin directories at its root. Do not add an enclosing platform directory: the desktop updater extracts the ZIP directly into the installation directory. The macOS CLI lives at `EditHere.app/Contents/MacOS/edithere-cli`. The separate Linux `edithere-cli` is a wrapper for its accompanying AppImage and must not be mixed with a different version.
 
+The macOS DMG opens in icon view with only two ordinary visible entries: `EditHere.app` on the left and an `Applications` shortcut on the right, with an arrow indicating drag-and-drop installation. Documentation, licenses, the version stamp, skills, and schemas live in `.app/Contents/Resources/` and are installed with the app. Qt dependencies and the CLI stay inside the bundle. Pinned `dmgbuild==1.6.7` writes the Finder layout without requiring Finder automation permission. `check-macos-package.py` mounts the actual DMG to validate its contents and layout, copies the app out, ejects the image, and checks the copied app's signature and CLI.
+
 Desktop packaging reads `version.txt`, generated after a successful link. See [Development](DEVELOPMENT.en.md) for the version source, commands and tests. The default toolchain requires Qt 6.8.3, CMake 3.24+, Ninja and a C++20 compiler. Windows releases use MinGW GCC 13.1.0. macOS targets 14+ and `arm64;x86_64`, with CI pinned to Xcode 16.4. Linux targets Ubuntu 24.04 x86_64 and additionally needs platform dependencies and linuxdeploy; see the [Linux guide](LINUX.en.md). Preparing a collection on Windows does not build macOS or Linux installers automatically.
 
 ## Local preparation and public releases

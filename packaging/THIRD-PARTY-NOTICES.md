@@ -1,5 +1,11 @@
 # Third-party components
 
+The macOS installer background uses the built-in arrow from dmgbuild 1.6.7,
+under the MIT license. Its license is included in the app bundle at
+Contents/Resources/licenses/dmgbuild/LICENSE. The original license is retained
+in packaging/dmgbuild-LICENSE.txt in this source tree.
+Upstream: https://github.com/dmgbuild/dmgbuild/tree/v1.6.7
+
 EditHere uses dynamically linked Qt 6.8 (Qt Core, Gui, Widgets,
 Concurrent, Network, Qt SVG, Qt Image Formats and Qt Multimedia), copyright The Qt Company Ltd. and
 contributors, under LGPL version 3 and the components' applicable licenses.

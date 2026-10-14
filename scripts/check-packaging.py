@@ -455,6 +455,8 @@ def check_ci_toolchain() -> list[Problem]:
             "release.yml: NSIS is no longer installed on the runner, so the installer step fails."
         )
     for name, workflow in (("release.yml", release), ("native-macos.yml", macos)):
+        if "dmgbuild==1.6.7" not in workflow:
+            problems.append(f"{name}: the pinned macOS DMG builder is missing.")
         for line in workflow.splitlines():
             if "install-qt" in line and "--archives" in line and "qttranslations" not in line:
                 problems.append(

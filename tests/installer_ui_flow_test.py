@@ -262,12 +262,12 @@ class InstallerUIFlowTests(unittest.TestCase):
         self.next(page)
         page = self.wait_page("license", lambda _, text: "许可" in text or "协议" in text)
         self.next(page)
-        page = self.wait_page("options", lambda _, text: "组件" in text)
-        self.assertTrue(any(child["class"] == "SysTreeView32" for window in page for child in window["children"]))
+        page = self.wait_page("options", lambda windows, text: "组件" in text and any(
+            child["class"] == "SysTreeView32" for window in windows for child in window["children"]))
         self.next(page)
-        page = self.wait_page("directory", lambda _, text: str(target) in text)
-        self.assertTrue(any(child["class"] == "Edit" and child["text"] == str(target)
-                            for window in page for child in window["children"]))
+        page = self.wait_page("directory", lambda windows, text: str(target) in text and any(
+            child["class"] == "Edit" and child["text"] == str(target)
+            for window in windows for child in window["children"]))
         self.next(page)
         self.wait_page("install-progress", lambda _, text: "正在安装" in text)
         page = self.wait_page("install-finish", lambda _, text: "安装完成" in text)

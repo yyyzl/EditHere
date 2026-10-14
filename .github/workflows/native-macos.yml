@@ -44,7 +44,7 @@ jobs:
       - name: Install Qt and build tools
         run: |
           python3 -m venv .tools/python
-          .tools/python/bin/pip install aqtinstall==3.3.0 ninja
+          .tools/python/bin/pip install aqtinstall==3.3.0 ninja dmgbuild==1.6.7
           .tools/python/bin/python -m aqt install-qt mac desktop 6.8.3 clang_64 --modules qtimageformats qtmultimedia --archives qtbase qtsvg qtimageformats qtmultimedia qttranslations --outputdir .tools/qt
       - name: Build and test universal app
         env:

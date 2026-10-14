@@ -77,6 +77,8 @@ python scripts/prepare-distribution.py --output ../分发 --include-history
 
 Windows ZIP 内直接放程序、DLL 和插件目录，不能再套一层平台目录：桌面更新器会将 ZIP 直接解压到安装目录。macOS 的 CLI 位于 `EditHere.app/Contents/MacOS/edithere-cli`；Linux 的独立 `edithere-cli` 是与 AppImage 配套使用的包装脚本，不应混搭另一版本。
 
+macOS DMG 默认以图标视图打开，普通可见入口只有左侧 `EditHere.app` 与右侧 `Applications` 快捷入口，中间箭头表示拖拽安装。说明、许可、版本、skill 与 schema 都放在 `.app/Contents/Resources/` 内，随应用一起安装。Qt 依赖与 CLI 保留在应用包中。打包使用固定版本 `dmgbuild==1.6.7` 写入 Finder 布局，不需要 Finder 自动化授权；`check-macos-package.py` 会挂载真实 DMG 检查内容与布局，再复制应用、推出磁盘并验证签名和 CLI。
+
 桌面打包从成功链接后生成的 `version.txt` 读取版本。版本唯一来源、命令示例及测试入口见[开发说明](DEVELOPMENT.md)。默认构建依赖 Qt 6.8.3、CMake 3.24+、Ninja 和 C++20 编译器：Windows 发行流程使用 MinGW GCC 13.1.0；macOS 构建目标为 14+、`arm64;x86_64`，CI 固定 Xcode 16.4；Linux 包目标为 Ubuntu 24.04 x86_64，还需要平台依赖和 linuxdeploy，见[Linux 说明](LINUX.md)。本地 Windows 汇总不会自动构建 macOS 或 Linux 安装包。
 
 ## 本地汇总与公开发布

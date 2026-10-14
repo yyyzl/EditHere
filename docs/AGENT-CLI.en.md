@@ -54,7 +54,7 @@ On macOS the command name is `edithere-cli`, deployed with the app at `EditHere.
 /Applications/EditHere.app/Contents/MacOS/edithere-cli --help
 ```
 
-If you keep the app in `~/Applications` or another stable location, adjust the path accordingly; you can also add the CLI to PATH yourself. For macOS Screen Recording and Accessibility permissions and the state of on-device acceptance testing, see [Platform boundaries](USER-GUIDE.en.md#recognition-and-platform-boundaries).
+If you keep the app in `~/Applications` or another stable location, adjust the path accordingly; you can also add the CLI to PATH yourself. Skills and schemas are bundled in `Contents/Resources/skills/` and `Contents/Resources/schema/` and travel with the app during drag-and-drop installation. The annotation whiteboard does not request Screen Recording or Accessibility permissions.
 
 ## Desktop access for Windows agents
 

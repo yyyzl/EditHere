@@ -17,11 +17,11 @@
 
 日常修复和小幅优化只增加末位补丁号，例如 `0.8.0 → 0.8.1 → 0.8.2`。中间位只在集中完成较大功能阶段、明确发布时增加；不再为每轮开发递增。第一位保留给明确的大版本发布，已有版本号和历史包保持不变。回退仅针对当次实现，不冻结后续版本；撤回的编号不复用。
 
-产品版本唯一来源为 `CMakeLists.txt` 的 `project(... VERSION ...)`，当前为 **0.12.0**。运行时版本和 Mac 应用信息自动使用该值；成功链接后生成 `build/version.txt`（Mac 为 `build-macos/version.txt`），两平台打包脚本据此命名并随包附带 `version.txt`。修改版本后必须重新构建，避免将旧程序标记为新版本。产品版本与 JSON 格式独立管理：精简图片反馈的当前格式由 `feedback-minimal.schema.json` 定义（`0.9.0` 起为 `objects` 对象结构，`0.8.21` 的 `annotations` / `changes` 并行数组见 `feedback-v0.7.schema.json`，仍可导入）；`feedback-v1` / `v1.1` / `v2` 描述早期**项目文档**格式，完整图片项目使用 `project-v3.schema.json`。视频反馈与项目分别使用 `video-feedback-v1.schema.json`（`video-feedback-1`）及 `video-project-v1.schema.json`（`video-project-1`）。文件名代表数据格式，不代表应用版本。
+产品版本唯一来源为 `CMakeLists.txt` 的 `project(... VERSION ...)`，以该声明为准。运行时版本和 Mac 应用信息自动使用该值；成功链接后生成 `build/version.txt`（Mac 为 `build-macos/version.txt`），打包脚本据此命名；Windows 将 `version.txt` 放在程序目录，macOS 放在应用包 `Contents/Resources/`。修改版本后必须重新构建，避免将旧程序标记为新版本。产品版本与 JSON 格式独立管理：精简图片反馈的当前格式由 `feedback-minimal.schema.json` 定义（`0.9.0` 起为 `objects` 对象结构，`0.8.21` 的 `annotations` / `changes` 并行数组见 `feedback-v0.7.schema.json`，仍可导入）；`feedback-v1` / `v1.1` / `v2` 描述早期**项目文档**格式，完整图片项目使用 `project-v3.schema.json`。视频反馈与项目分别使用 `video-feedback-v1.schema.json`（`video-feedback-1`）及 `video-project-v1.schema.json`（`video-project-1`）。文件名代表数据格式，不代表应用版本。
 
 ## 发布流程
 
-打 `vX.Y.Z` 标签并推送即触发 `.github/workflows/release.yml`：Windows、macOS 与 Linux 构建任务分别产出程序包，`build-web` 作业打包两种 Web 包，release 任务汇总后创建 GitHub Release。源码版本或本地包更新不等于公开最新版本已更新；GitHub 的 `/releases/latest` 依其正式 Release 元数据决定。应用内更新仅检查 GitHub `yyyzl/EditHere` 的正式发行版。安装包和 SHA-256 来自同一发行版，不再查询上游产品镜像。
+打 `vX.Y.Z` 标签并推送即触发 `.github/workflows/release.yml`：Windows、macOS 与 Linux 构建任务分别产出程序包，`build-web` 作业打包两种 Web 包，release 任务汇总后创建 GitHub Release。手动从分支运行发布工作流时，新标签指向本次实际构建的源码提交，所有检查通过后才发布。源码版本或本地包更新不等于公开最新版本已更新；GitHub 的 `/releases/latest` 依其正式 Release 元数据决定。应用内更新仅检查 GitHub `yyyzl/EditHere` 的正式发行版。安装包和 SHA-256 来自同一发行版，不再查询上游产品镜像。
 
 - **发布必须带完整程序包**。release 任务在发布前检查 `EditHere-win-x64-setup.exe`、`EditHere-win-x64.zip`、`EditHere-macos-universal.dmg`、`EditHere-linux-x86_64.AppImage` 与两种 Web 包（`EditHere-web.zip`、`EditHere-web-agent.zip`）均存在且非空，任一缺失即令工作流失败；构建任务失败时不会产出只有源码的发布。Web 包由 `build-web` 作业调用 `python scripts/prepare-distribution.py --web-only --channel release` 生成；内嵌素材与随包法律文本的行尾由 `.gitattributes` 固定，各平台与 CI 重建出同样的 `web/EditHere.html` 与同样的两种 ZIP。发布前按下发给用户的字节复核两种 Web 包：`node scripts/web-package-check.cjs <ZIP 路径>`。
 - 资产名不含版本号（文档与更新检查使用 `/releases/latest/download/<固定名>`），随包附 `SHA256SUMS.txt` 与逐文件 `.sha256`；Web 包同样按无版本名发布为 `EditHere-web.zip` 与 `EditHere-web-agent.zip`。
@@ -52,6 +52,8 @@ Windows PowerShell 7，CMake 在 PATH 中：
 ./scripts/build-windows.ps1 -QtRoot C:/Qt/6.8.3/mingw_64 -Compiler C:/Qt/Tools/mingw1310_64/bin/g++.exe -Ninja C:/Tools/ninja.exe
 ./scripts/package-windows.ps1 -QtRoot C:/Qt/6.8.3/mingw_64 -CompilerBin C:/Qt/Tools/mingw1310_64/bin
 ```
+
+macOS 安装盘使用 `dmgbuild==1.6.7`，与 Qt 下载工具一起装在项目内的 `.tools/python` 虚拟环境，构建时将其 `bin` 加入当前进程 PATH。`scripts/build-macos.sh` 打包后调用 `scripts/check-macos-package.py`，检查真实 DMG 的双入口、Finder 布局、应用资源和复制推出后的签名及 CLI。
 
 构建脚本运行检测、核心数据、布局、界面、行内文本、画布交互、设置、多语言、引导、自启、启动流程、更新和 CLI 等测试；Windows 另含 Agent 启动测试，以当前 CTest 输出为准。导出样本及窗口渲染截图存于 `artifacts/native-ui/`。安装 `jsonschema==4.26.0` 后，可运行 `python scripts/validate-exports.py` 独立校验导出；macOS 构建（`.github/workflows/native-macos.yml`）会为同一批产物自动运行它，schema 与真实导出不符时构建即失败。改动界面文案后另跑 `python scripts/check-translations.py --qt <Qt 安装目录>`，详见 [多语言与翻译](i18n.md)。打包只写新目录；重复打包请传入新的 `-OutputDirectory`。
 

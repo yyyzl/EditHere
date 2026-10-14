@@ -8,6 +8,8 @@ This local variant is based on EditHere 0.11.1. Launching opens an empty workspa
 
 ## Workflow
 
+On macOS, open the DMG and drag EditHere on the left to Applications on the right. Launch it from Applications, then eject the disk image. Quit the old version completely before replacing it during an upgrade.
+
 1. Launch and paste with **Ctrl / ⌘ + V**, drop an image, or choose Import.
 2. Add smart, point, rectangle, or global annotations.
 3. Use **Explode** to move and resize components, recording original and destination coordinates.
