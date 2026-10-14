@@ -392,3 +392,7 @@ Linux 专项 `linux_platform_tests` 在独立 DBus 会话中覆盖开机启动�
 ## WB-001 · 白板启动与截图入口清理
 
 普通启动、再次启动和托盘单击曾触发系统截图。白板版改为激活现有编辑器；没有素材时显示空白工作台。移除屏幕采集、OCR、长截图和贴图模块、全局快捷键以及 CLI / MCP 截图入口，清理旧截图偏好但保留其他设置。`startup_flow_test.cpp` 检查空白启动、重复激活及 AI 会话保护；`settings_test.cpp` 检查旧设置迁移；`connector_test.mjs` 与 `check-packaging.py::check_whiteboard` 检查工具及构建范围；现有 UI、布局和 CLI 测试覆盖图片输入与反馈提交。
+
+## WB-002 · macOS 关闭窗口后 Dock 无法恢复
+
+白板关闭后隐藏窗口并驻留后台，旧实现只处理托盘点击与第二次进程启动的 IPC 激活，没有接入 macOS 点击 Dock 时 Qt 发出的 `applicationStateChanged(ApplicationActive)` 通知。增加该连接，记录窗口关闭到后台后再允许激活恢复，避免后台启动误弹。`startup-flow::dockActivationReopensClosedWhiteboardRepeatedly` 覆盖重复关闭恢复；`applicationActivationKeepsBackgroundStartupHidden` 覆盖后台启动；`dockActivationPreservesCancelledAgentDocument` 覆盖 AI 取消后的素材保留。macOS 测试通过应用通知验证实际连接，其他平台直接验证同一处理逻辑。`macos-dock-reopen` 在 Cocoa 后端直接调用 AppKit 的 Dock 再次打开入口，验证原生通知到白板恢复的完整路径，并覆盖原生初始激活时后台不弹窗。

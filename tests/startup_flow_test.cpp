@@ -43,6 +43,16 @@ class StartupFlowTestAccess {
     static void receipt(Controller &controller) { controller.readInstallationReceipt(); }
     static void presentReceipt(Controller &controller) { controller.presentInstallationReceipt(); }
     static bool pendingReceipt(Controller &controller) { return !controller.pendingInstallationReceipt_.isEmpty(); }
+    static void notifyApplicationState(Controller &controller, Qt::ApplicationState state = Qt::ApplicationActive) {
+#ifdef Q_OS_MACOS
+        Q_UNUSED(controller);
+        // 验证 macOS 实际安装的通知连接，也覆盖应用已经激活时的重复 Dock 点击。
+        qApp->applicationStateChanged(state);
+#else
+        // 其他平台直接回归同一处理逻辑，生产环境只在 macOS 连接此通知。
+        controller.restoreClosedWindow(state);
+#endif
+    }
 };
 }
 
@@ -325,6 +335,56 @@ class StartupFlowTests : public QObject {
         controller.activate();
         QVERIFY(editor->isVisible());
         QVERIFY(!editor->hasDocument());
+    }
+    void dockActivationReopensClosedWhiteboardRepeatedly() {
+        Controller controller(nullptr, quietSettings());
+        controller.start(false);
+        auto editor = editorOf(controller);
+        QVERIFY(editor && editor->isVisible());
+        for (int attempt = 0; attempt < 3; ++attempt) {
+            editor->close();
+            QVERIFY(!editor->isVisible());
+            StartupFlowTestAccess::notifyApplicationState(controller, Qt::ApplicationInactive);
+            QVERIFY(!editor->isVisible());
+            StartupFlowTestAccess::notifyApplicationState(controller);
+            QVERIFY(editor->isVisible());
+            QVERIFY(!editor->hasDocument());
+            QVERIFY(!editor->guideActive());
+        }
+    }
+    void applicationActivationKeepsBackgroundStartupHidden() {
+        Controller controller(nullptr, quietSettings());
+        controller.start(false, {}, true);
+        auto editor = editorOf(controller);
+        QVERIFY(editor && !editor->isVisible());
+        for (int attempt = 0; attempt < 3; ++attempt) {
+            StartupFlowTestAccess::notifyApplicationState(controller);
+            QVERIFY(!editor->isVisible());
+        }
+        QVERIFY(!controller.findChild<UpdateChecker *>("startupUpdateChecker"));
+    }
+    void dockActivationPreservesCancelledAgentDocument() {
+        QTemporaryDir directory;
+        QImage image(120, 80, QImage::Format_ARGB32);
+        image.fill(Qt::green);
+        const auto input = directory.filePath("input.png");
+        QVERIFY(image.save(input));
+        Controller controller(nullptr, quietSettings());
+        const auto started = controller.handleAgentRequest({{"command", "annotate"}, {"input", input},
+            {"output", directory.filePath("feedback.json")}, {"timeout", 30}});
+        QVERIFY(started["pending"].toBool());
+        auto editor = editorOf(controller);
+        QVERIFY(editor && editor->hasDocument());
+        const auto document = editor->document();
+        editor->close();
+        QVERIFY(!editor->isVisible());
+        QVERIFY(!controller.handleAgentRequest({{"command", "status"}})["agentSession"].toBool());
+        StartupFlowTestAccess::notifyApplicationState(controller);
+        QVERIFY(editor->isVisible());
+        QCOMPARE(editor->document().image, document.image);
+        QCOMPARE(editor->document().dirty, document.dirty);
+        StartupFlowTestAccess::notifyApplicationState(controller);
+        QCOMPARE(editor->document().image, document.image);
     }
     void newWhiteboardPreservesActiveAgentSession() {
         QTemporaryDir directory;

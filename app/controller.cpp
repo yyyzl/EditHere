@@ -33,7 +33,10 @@ Controller::Controller(QObject *parent, const AppSettings &settings, const QStri
     auto menuBarIcon = tray_.icon();
     menuBarIcon.setIsMask(true);
     tray_.setIcon(menuBarIcon);
+    // Dock 再次打开也会发送此通知，即使应用已经处于活动状态。
+    connect(qApp, &QGuiApplication::applicationStateChanged, this, &Controller::restoreClosedWindow);
 #endif
+    connect(&editor_, &Editor::hiddenToTray, this, [this] { closedToTray_ = true; });
     auto menu = new QMenu(&editor_);
     annotateAction_ = menu->addAction(QString(), this, &Controller::openAnnotation);
     annotateAction_->setObjectName("trayAnnotate");
@@ -322,6 +325,11 @@ void Controller::activate() {
         raiseEditor();
     else
         editor_.openEmpty();
+}
+void Controller::restoreClosedWindow(Qt::ApplicationState state) {
+    // 只恢复用户关闭过的窗口，避免初始激活使登录自启或 AI 后台启动弹窗。
+    if (state == Qt::ApplicationActive && closedToTray_ && !editor_.isVisible())
+        activate();
 }
 void Controller::quit() {
     const bool pendingSession = !agentSessionId_.isEmpty();

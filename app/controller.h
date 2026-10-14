@@ -24,6 +24,7 @@ class Controller final : public QObject {
     void finishAgentSession();
     void retranslate();
     void raiseEditor();
+    void restoreClosedWindow(Qt::ApplicationState state);
     void scheduleStartupUpdate();
     void startupUpdateFinished(const UpdateChecker::Result &result);
     void presentStartupUpdate();
@@ -38,6 +39,7 @@ class Controller final : public QObject {
     QSystemTrayIcon tray_;
     QString agentSessionId_, agentOutput_;
     bool agentEmbed_ = true;
+    bool closedToTray_ = false;
     bool startupUpdateChecked_ = false;
     std::optional<UpdateChecker::Result> pendingStartupUpdate_;
     bool installationReceiptChecked_ = false;
