@@ -7,7 +7,6 @@ symlinks = {"Applications": "/Applications"}
 format = "UDZO"
 filesystem = "HFS+"
 icon = str(Path(application) / "Contents/Resources/edithere.icns")
-hide_extensions = ["EditHere.app"]
 background = "builtin-arrow"
 window_rect = ((100, 100), (640, 280))
 default_view = "icon-view"
