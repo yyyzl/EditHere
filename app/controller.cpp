@@ -28,6 +28,12 @@ Controller::Controller(QObject *parent, const AppSettings &settings, const QStri
     editor_.setPreferences(settings_);
     editor_.setShortcuts(settings_.shortcuts);
     tray_.setObjectName("edithereTray");
+#ifdef Q_OS_MACOS
+    // macOS 菜单栏使用系统模板着色，随背景自动切换明暗。
+    auto menuBarIcon = tray_.icon();
+    menuBarIcon.setIsMask(true);
+    tray_.setIcon(menuBarIcon);
+#endif
     auto menu = new QMenu(&editor_);
     annotateAction_ = menu->addAction(QString(), this, &Controller::openAnnotation);
     annotateAction_->setObjectName("trayAnnotate");
