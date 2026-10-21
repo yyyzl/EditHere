@@ -426,6 +426,7 @@ void LayoutCanvas::mousePressEvent(QMouseEvent *event) {
     }
     if (event->button() != Qt::LeftButton)
         return;
+    reselectOnClick_ = false;
     setFocus();
     const auto notes = displayedAnnotations();
     for (auto it = notes.crbegin(); it != notes.crend(); ++it) {
@@ -450,7 +451,7 @@ void LayoutCanvas::mousePressEvent(QMouseEvent *event) {
         drawing_ = true;
         return;
     }
-    if (!selected_.isEmpty()) {
+    if (!selected_.isEmpty() && !(event->modifiers() & Qt::ControlModifier)) {
         auto bounds = selectionBounds();
         auto points = controlPoints(bounds);
         for (int i = 0; i < points.size(); ++i)
@@ -459,6 +460,7 @@ void LayoutCanvas::mousePressEvent(QMouseEvent *event) {
                 break;
             }
         if (handle_ >= 0 || inside(bounds, press_)) {
+            reselectOnClick_ = handle_ < 0;
             before_ = state_;
             initial_ = bounds;
             dragging_ = true;
@@ -567,6 +569,16 @@ void LayoutCanvas::mouseReleaseEvent(QMouseEvent *event) {
         return;
     if (dragging_) {
         dragging_ = false;
+        // A press inside the old selection may start a drag, but a plain click
+        // must still be able to select a nested/overlapping second component.
+        // Keep drags and resize handles attached to the original selection.
+        if (reselectOnClick_ && state_ == before_ &&
+            QLineF(press_, pixel(event->position())).length() * zoom_ <= 5 &&
+            !(event->modifiers() & Qt::ControlModifier)) {
+            updateHover(pixel(event->position()));
+            if (!hover_.isEmpty())
+                select({hover_});
+        }
         commit(before_);
     } else if (drawing_) {
         drawing_ = false;

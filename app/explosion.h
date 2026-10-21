@@ -87,6 +87,7 @@ class LayoutCanvas final : public QWidget {
     int level_ = 0, handle_ = -1;
     double zoom_ = 1;
     bool dragging_ = false, drawingMode_ = false, drawing_ = false, guides_ = true;
+    bool reselectOnClick_ = false;
     bool middlePanning_ = false, suppressMouse_ = false;
     QPoint middlePanLast_;
     QPointF press_, end_, hoverAnchor_{-1000, -1000};

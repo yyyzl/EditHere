@@ -38,7 +38,7 @@ class Controller final : public QObject {
     Editor editor_;
     QSystemTrayIcon tray_;
     QString agentSessionId_, agentOutput_;
-    bool agentEmbed_ = true;
+    FeedbackExportOptions agentExportOptions_;
     bool closedToTray_ = false;
     bool startupUpdateChecked_ = false;
     std::optional<UpdateChecker::Result> pendingStartupUpdate_;

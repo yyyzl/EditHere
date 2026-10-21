@@ -27,7 +27,7 @@ The application does not call a model. AI can open an input and wait for explici
 edithere-cli annotate <absolute-image-path> --output <new-feedback-json> --timeout 1800
 ```
 
-Feedback retains `annotationSpace / objects / source / movements / annotations`. Cancel and timeout never submit unfinished edits. CLI and MCP screenshot tools are removed.
+New feedback uses `feedback-minimal-3`: `annotationSpace / objects / kind / source / movement / annotations`, with stable annotation numbers and file-local object IDs. Older feedback remains readable. By default, exports save JSON and a companion original image: `--embed-image` embeds it, `--no-image` keeps only its descriptor, and `--preview` adds a numbered JPEG. Deliver companion files together. Cancel and timeout never submit unfinished edits. CLI and MCP screenshot tools remain removed. No automatic OCR is restored; existing region text in imported files can be retained and edited.
 
 ## Build and documentation
 

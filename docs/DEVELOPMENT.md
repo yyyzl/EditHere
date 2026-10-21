@@ -1,6 +1,6 @@
 # EditHere · 改这里：开发说明
 
-> 本地精简版已改为纯批注白板。截图、OCR、长截图和贴图模块已删除；核心批注、布局、项目和 Agent 会话保持原有格式。设计见 [DESIGN.md](../DESIGN.md)。后台单元测试最长 60 秒。
+> 本地精简版已改为纯批注白板。截图、OCR、长截图和贴图模块已删除；项目保持可读，反馈导出已整合 v3 协议并兼容旧反馈。设计见 [DESIGN.md](../DESIGN.md)。后台单元测试最长 60 秒。
 
 
 **简体中文** · [English](DEVELOPMENT.en.md)
@@ -11,7 +11,7 @@
 
 ## 分支与技术栈
 
-当前分支为 `codex/annotation-whiteboard`，使用 C++20 + Qt 6 Widgets。已保留的 `desktop` 分支为 Windows WPF 0.2（`cf9c364`），`web` 分支为 Web 0.3（`66548c5`）。
+自己的主线为 `codex/native`，上游白板整合在独立分支验证（见 [整合记录](UPSTREAM-WHITEBOARD.md)），使用 C++20 + Qt 6 Widgets。已保留的 `desktop` 分支为 Windows WPF 0.2（`cf9c364`），`web` 分支为 Web 0.3（`66548c5`）。
 
 ## 版本管理
 

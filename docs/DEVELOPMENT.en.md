@@ -1,6 +1,6 @@
 # EditHere · Development notes
 
-> This local variant is an annotation whiteboard. Screenshot, OCR, scrolling capture and pinning modules are removed. Annotation, layout, project and Agent formats are preserved. See [DESIGN.md](../DESIGN.md). Unit tests have a 60-second limit.
+> This local variant is an annotation whiteboard. Screenshot, OCR, scrolling capture and pinning modules are removed. Projects remain readable; feedback exports use v3 while retaining older feedback readers. See [DESIGN.md](../DESIGN.md). Unit tests have a 60-second limit.
 
 
 [简体中文](DEVELOPMENT.md) · **English**
@@ -11,7 +11,7 @@ Run all the commands below from the repository root; file paths are also relativ
 
 ## Branches and technology stack
 
-The current branch is `codex/annotation-whiteboard`, built with C++20 + Qt 6 Widgets. The retained `desktop` branch is Windows WPF 0.2 (`cf9c364`), and the `web` branch is Web 0.3 (`66548c5`).
+Our main branch is `codex/native`; upstream whiteboard integration is validated on a separate branch. The desktop uses C++20 + Qt 6 Widgets. The retained `desktop` branch is Windows WPF 0.2 (`cf9c364`), and the `web` branch is Web 0.3 (`66548c5`).
 
 ## Version management
 

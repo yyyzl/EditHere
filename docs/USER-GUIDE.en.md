@@ -7,7 +7,7 @@
 
 [Back to the product overview](../README.en.md) · [AI and the command line](AGENT-CLI.en.md) · [Changelog](../CHANGELOG.md) · [Development notes](DEVELOPMENT.en.md)
 
-This page covers **0.11.1** and describes capture, video annotation, comments, component adjustments, project saving, feedback export and platform limits. The public download links below point to GitHub's current public release. Paths are relative to the project root; see the [licence](../LICENSING.md) for download and usage terms.
+This page covers the **0.12.3 baseline and unreleased whiteboard integration** and describes image import, video annotation, comments, component adjustments, project saving, feedback export and platform limits. The public download links below point to GitHub's current public release. Paths are relative to the project root; see the [licence](../LICENSING.md) for download and usage terms.
 
 ## Contents
 
@@ -35,7 +35,7 @@ Build this whiteboard variant from the current source. Launching opens an empty 
 - Closing the current capture prompts you to save unsaved changes, then releases the capture and slice caches; the app stays in the tray.
 - The **eye** button at the top hides the marks on the image and keeps the annotation text on the right, to view the original or export a clean comparison image.
 
-Mac editing shortcuts use Command and redo is Command + Shift + Z; global capture uses Option + Shift + 2, and new annotation uses Option + Shift + 1. Mac has not yet been verified on a real machine.
+Mac editing shortcuts use Command and redo is Command + Shift + Z. The whiteboard registers no system-wide capture or new-annotation shortcuts.
 
 ## Video annotation
 
@@ -56,7 +56,7 @@ While Explode is on, the annotation column always stays on the right; the Point 
 | Action | Behavior |
 | --- | --- |
 | Hover and scroll with nothing selected | Cycle through every candidate region under the cursor |
-| Click a candidate region | Select a component or component group |
+| Click a candidate region | Select a component or group; a click inside the old selection can switch to another region, while dragging moves the old selection |
 | Drag inside a selected region | Move the component |
 | Drag an edge midpoint | Change the width or height |
 | Drag a corner | Scale proportionally, without Shift |
@@ -81,14 +81,17 @@ A move becomes an annotation the moment it happens, listed alongside text annota
 | Copy annotated image | `Ctrl + C` | Put the annotated image on the clipboard; the image area is a uniform 960 pixels wide, and indices, text and the sidebar keep a consistent scale |
 | Copy JSON file / Copy JSON content / Save image / Hide marks / Global annotation | Not bound by default | Assign them yourself in Settings |
 
-The bottom toolbar shows **Save project**, **Save image**, **View JSON**, **Copy JSON content**, **Copy JSON file**, **Copy annotated image**, **Retake screenshot** and **Fit image** by default; which buttons appear is chosen in **Settings → Toolbar**, and unchecked buttons do not appear in the bottom bar.
+The bottom toolbar shows **Save project**, **Save image**, **View JSON**, **Copy JSON content**, **Copy JSON file**, **Copy annotated image**, **Import image** and **Fit image** by default; which buttons appear is chosen in **Settings → Toolbar**, and unchecked buttons do not appear in the bottom bar.
 
 The **“Need help?”** entry on the toolbar and at the top of the annotation window explains what to do when an agent cannot take the feedback.
 
-The **View JSON** window provides three options and actions:
+The **View JSON** window provides image modes, numbered previews and actions:
 
-- **Includes the source image; fully self-contained**: by default follows “Include the source image in exported JSON by default” in Settings. When unchecked, the JSON contains no image and reopening needs a PNG of the same name alongside it.
-- **Compressed preview (same size, may lose slight detail)**: converts the embedded image to JPEG, keeping the size and reducing the file.
+- **Image: file reference** (default): saves JSON and a companion original; deliver both. Imports verify dimensions and SHA-256.
+- **Image: embedded in JSON**: produces a self-contained file.
+- **Image: do not export**: keeps only the descriptor; the receiver must already have the original.
+- **Include numbered JPEG preview**: adds a preview, not a replacement for the original.
+- **Compress embedded image / preview**: retains dimensions but may lose slight detail.
 - **Copy JSON file**: writes the JSON to a temporary file and copies that file (not the text), for agents that can be sent files directly; the temporary folder is configured in **Settings → Default behavior → Feedback temporary folder**.
 - **Copy JSON content**: copies the JSON text, for agents that can only paste text.
 - **Save JSON and image**: saves the JSON and the accompanying image to a chosen folder.
@@ -97,21 +100,22 @@ Copying and exporting JSON use the same minimal structure; see [Feedback JSON](#
 
 ## Feedback JSON
 
-Image feedback uses an **object-oriented** structure: each object records a source region `source`, the position changes it undergoes `movements`, and the comments attached to that region `annotations`, so an AI can directly pair the comments and moves of the same object. Video feedback reuses this structure inside `frames[].feedback` and adds frame timestamps, source video information and a timestamped object index; see [Video annotation](#video-annotation) for details.
+New image feedback uses `feedback-minimal-3`: `kind` distinguishes regions, points and global opinions; moved regions use a single final `movement`, and `annotations` contains numbered `{number,text}` opinions. Older `movements`, string annotations and unversioned feedback remain readable. Video feedback reuses this structure inside `frames[].feedback` and adds frame timestamps, source video information and a timestamped object index; see [Video annotation](#video-annotation) for details.
 
 | Field | Meaning |
 | --- | --- |
-| `image` | Optional data URL of the image before adjustment (PNG, or JPEG when compressed); the size is unchanged and compression loses a little detail |
+| `image` | Original descriptor: `file` (default), `embedded` or `none`, with MIME, dimensions and SHA-256 |
 | `annotationSpace` | Fixed to `"result"`, meaning annotation coordinates refer to the current adjusted image |
-| `objects[].source` | The object's region in the original image; `null` for a global note |
-| `objects[].movements` | Records this region's moves or resizes in order, with `to` as the final coordinates |
-| `objects[].annotations` | Text notes attached to this object |
+| `objects[].id / kind` | File-local object ID and `region`, `point` or `global` type |
+| `objects[].source / point` | Positive-size region source, or `point:{x,y}`; globals omit coordinates |
+| `objects[].movement` | Optional final `rect`, cumulative `dx/dy`, and non-unit `scaleX/scaleY` |
+| `objects[].annotations` | `{number,text}` opinions; numbers match the UI, not object array positions |
 
-Components that do not change in image feedback are not exported; no full slice list, component group references, hashes or timestamps are output. The Base64 source image increases the file size, which is the cost of putting the image in a single JSON and is independent of the number of components. The image format is defined by `schema/feedback-minimal.schema.json`; video feedback and projects are defined by `schema/video-feedback-v1.schema.json` and `schema/video-project-v1.schema.json` respectively.
+Components with neither opinions nor changes are omitted; no full slice list or group references are exported. Feedback includes the actual tool version, a timezone-aware export timestamp and the original image hash. The Base64 source image increases the file size, which is the cost of putting the image in a single JSON and is independent of the number of components. The image format is defined by `schema/feedback-minimal.schema.json`; video feedback and projects are defined by `schema/video-feedback-v1.schema.json` and `schema/video-project-v1.schema.json` respectively.
 
-Coordinates take the top-left of the canvas as the origin and are in image pixels, independent of the window position and view zoom. A box uses the two endpoints `x1/y1/x2/y2`; the bottom-right boundary excludes itself, and the width and height are `x2-x1` and `y2-y1`. Annotation coordinates are integers, while layout change coordinates may contain decimals.
+Coordinates take the top-left of the canvas as the origin and are in image pixels, independent of the window position and view zoom. A box uses the two endpoints `x1/y1/x2/y2`; the bottom-right boundary excludes itself, and the width and height are `x2-x1` and `y2-y1`. New feedback coordinates and displacement are integers; scale ratios have at most two decimal places and default to 1. Projects retain editable precision and older fractional feedback remains readable.
 
-The example below omits the optional `image` field and shows a point comment, a region comment, a moved object and a global comment:
+The following is a **readable legacy example, not the new export format**. See [Agent CLI](AGENT-CLI.en.md) and [Feedback v3](FEEDBACK-V3.md) for the current contract:
 
 ```json
 {
@@ -138,7 +142,8 @@ The parallel `annotations` and `changes` arrays used by earlier versions (the le
 | v1/v1.1/v2 projects from 0.5 and earlier | `capture.pngBase64` can be embedded, or references an external PNG | Original image | v2 saves every slice, group and the original/target coordinates |
 | 0.6 minimal feedback | External PNG with the same name | Original image | Only the changed `from/to` |
 | 0.7 / 0.8 feedback | `image` can be embedded | Adjusted image | Only the changed `from/to` in `changes` |
-| 0.9 onwards (current) | `image` can be embedded, included by default in the interface | Adjusted image | `source` and `movements` recorded per object in `objects` |
+| Older object feedback (0.9 onwards) | `image` can be embedded | Adjusted image | `source` and legacy `movements` |
+| Current v3 feedback | Companion image by default; optionally embedded | Adjusted image | `kind`, single `movement`, numbered opinions |
 | 3.0.0 `.edithere` project | Always embeds the original image | Adjusted image | Full slice cache and current editing state |
 
 The app no longer opens legacy projects or 0.6 minimal feedback, and old annotations are no longer converted to the position in the adjusted result. When you clear the option to include the source image, reopening needs an original PNG of the same name alongside it. An `.edithere` project saves the full slices and editing state (`schemaVersion: "3.0.0"`) and restores directly when reopened. Closing the whiteboard releases the in-memory cache. When you reopen feedback JSON, the layout is rebuilt from the original image and the changes it contains.
@@ -180,7 +185,9 @@ The following are the Windows defaults; common Mac editing combinations use Comm
 | --- | --- |
 | Start EditHere at login | After you sign in it only stays in the tray and does not capture automatically; keep the folder the app is in, and after moving it save once to refresh the path |
 | Fit to window when opening an image | When off, images open at 100%; you can still zoom or fit to window at any time |
-| Include the source image in exported JSON by default | Sets the initial state of “Includes the source image” in “View JSON”; saving a project always includes the source image |
+| Image export mode | File reference (default), embedded JSON or no original; projects always embed the original |
+| Include numbered preview | Adds a numbered JPEG |
+| Include region text / window title | Controls imported metadata export; does not enable OCR or system window collection |
 | Ask about saving when the annotation window closes | When off, closing no longer prompts and discards unsaved annotations directly; ticking “Do not ask again” in the annotation window also turns this off |
 | Feedback temporary folder | Where temporary feedback JSON files are stored; leave empty to use `feedback` under the default cache directory |
 

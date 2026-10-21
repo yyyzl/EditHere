@@ -35,7 +35,7 @@ EditHere 负责整理反馈，不内置模型调用。
 edithere-cli annotate <图片绝对路径> --output <新的反馈JSON路径> --timeout 1800
 ```
 
-在白板中完成批注并点击「完成并返回 AI」。反馈保留 `annotationSpace / objects / source / movements / annotations` 格式，取消或超时不提交未完成意见。
+在白板中完成批注并点击「完成并返回 AI」。新反馈使用 `feedback-minimal-3`：`annotationSpace / objects / kind / source / movement / annotations`，保留批注编号及对象 ID，兼容读取旧反馈。默认导出 JSON 与配套原图，`--embed-image` 内嵌原图、`--no-image` 仅保留原图描述，`--preview` 附带编号 JPEG；请一起交付配套图片。取消或超时不提交未完成意见。白板不自动 OCR，但可保留、编辑导入文件中已有的区域文字。
 
 MCP 连接器提供 `edithere_status`、`edithere_open`、`edithere_annotate_start`、`edithere_annotate_poll`、`edithere_annotate`、`edithere_export`。CLI 和 MCP 的截图命令已移除。
 
@@ -50,6 +50,7 @@ MCP 连接器提供 `edithere_status`、`edithere_open`、`edithere_annotate_sta
 - [视频批注](docs/VIDEO-ANNOTATION.md)
 - [平台与分发](docs/DISTRIBUTION.md)
 - [更新记录](CHANGELOG.md)
+- [上游白板整合范围与兼容说明](docs/UPSTREAM-WHITEBOARD.md)
 
 本地截图和图片不再由系统采集；导入素材、分析、批注和导出在本机完成。将反馈交给 AI 时，数据处理由所接入的 AI 工具决定。
 

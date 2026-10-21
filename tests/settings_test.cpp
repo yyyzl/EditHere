@@ -91,6 +91,27 @@ class SettingsTests : public QObject {
         dialog.reject();
         QVERIFY(dialog.settings() == original);
     }
+    void feedbackPreferencesPersistWithoutRestoringCaptureFeatures() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const auto path = directory.filePath("settings.ini");
+        for (auto mode : {ImageExportMode::File, ImageExportMode::Embedded, ImageExportMode::None}) {
+            auto settings = defaultSettings();
+            settings.imageExportMode = mode;
+            settings.includeFeedbackPreview = true;
+            settings.includeRecognizedText = false;
+            settings.includeWindowTitle = false;
+            QString error;
+            QVERIFY2(saveSettings(settings, &error, path), qPrintable(error));
+            QCOMPARE(loadSettings(path), settings);
+            QVERIFY(!recognizedTextExportEnabled(path));
+            QVERIFY(!windowTitleExportEnabled(path));
+            SettingsDialog dialog(settings);
+            QCOMPARE(dialog.settings(), settings);
+            QVERIFY(dialog.findChild<QObject *>("captureOnStartup") == nullptr);
+            QVERIFY(dialog.findChild<QObject *>("ocrLanguage") == nullptr);
+        }
+    }
     void toolbarValidationPersistenceAndMigration() {
         QTemporaryDir directory;
         const auto path = directory.filePath("settings.ini");

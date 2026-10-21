@@ -21,6 +21,22 @@
 | --- | --- | --- | --- |
 | REG-179 | 安装器快捷方式快照拒绝 OneDrive CLOUD 桌面，即使未选桌面快捷方式也失败。仅快捷方式处理允许 CLOUD 至 CLOUD_F，继续拒绝目录联接、符号链接、未知标记及标记读取失败，安装目标和载荷保持严格检查。原生标记查询的 `Add-Type` 显式引用运行时程序集，避免 NSIS 插件目录的原生 `System.dll` 再次导致安装失败 | `installer-maintenance`：云桌面两种选项、卸载、中断恢复、联接拒绝；`ReparseTagTests`：16 种云标记、查询失败、真实云桌面只读检查、NSIS 原生 DLL 工作目录。云标记生命周期使用隔离替身，真实云桌面检查在环境不具备时跳过 | ⚠️ |
 
+## 反馈格式升级
+
+| 编号 | 问题与修复 | 回归检查 | 状态 |
+| --- | --- | --- | --- |
+| REG-184 | 精简反馈缺少页面来源；新增 capture 与 AI 页面说明后需避免标题覆盖、工程/视频/恢复丢失及隐私开关漏过滤，截图窗口信息必须来自抓取快照 | native core/layout/ui/agent-cli/settings/video-project；Windows 独立窗口快照；connector 参数/摘要/校验；Web capture/session/recovery/MCP 与浏览器；真实导出 Schema | ✅ |
+| REG-183 | 内嵌原图导致 JSON 体积大，缺图反馈依赖隐含文件名且无法验证图片；新增三模式与编码字节哈希，按完整 bundle 发布，预览使用编号 JPEG | native core / agent-cli / video-project / ui，connector 图片篡改与路径校验，Web bundle、session 与导入测试；validate-exports 校验实际三模式和附件 | ✅ |
+
+J04 回归：移动对象先归组，不能改变批注原有编号。原生 `core` 与 Web feedback / browser 测试验证交错的全局、点和移动批注；连接器拒绝重复 ID 或编号，同时保留旧字符串批注兼容。
+
+| 编号 | 问题与修复 | 回归检查 | 状态 |
+| --- | --- | --- | --- |
+| REG-180 | 精简图片反馈无版本，新增字段会被旧的项目分流或严格字段校验拒绝；新增显式版本分流和新旧格式兼容，预览/回执保留元数据 | `core` 元数据与新旧导入；`agent-cli` 回执；`tests/connector_test.mjs` 恢复与未知版本；`web/tests/feedback.test.cjs`、会话及导入测试；`scripts/validate-exports.py` 真实导出 Schema 验证 | 🆕 |
+| REG-181 | 移动对象先归组会使按导出顺序重编的编号偏离图上编号；从原批注顺序保留编号，导入检查重复并按编号还原 | `core` 编号与兼容测试；`tests/connector_test.mjs` 编号、间隙、重复及视频帧作用域；Web 单元和实际界面编号验收 | 🆕 |
+| REG-182 | 批注区域文字缺失，新增 OCR 后还可能被异步旧结果覆盖、在导出关闭后泄漏或在导入/视频索引中丢失；本机异步识别并保留手工编辑，区分截图文字与用户意见，统一过滤所有反馈出口 | `core` OCR 元数据/项目往返与裁图空间；`ui` 本机识别、编辑删除与过期结果；`settings` 持久化；连接器 OCR 校验与摘要/恢复；Web OCR 单元、会话及离线浏览器编辑/恢复/视频/导出开关；真实导出 Schema 校验 | 🆕 |
+
+
 ## 共享图标与状态（0.11.1）
 
 | 编号 | 问题与修复 | 回归检查 | 状态 |

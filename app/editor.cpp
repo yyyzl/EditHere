@@ -1,4 +1,6 @@
 #include "editor.h"
+#include "agentprotocol.h"
+#include <QComboBox>
 #include "diagnostics.h"
 #include "videoplayback.h"
 #include "imagearea.h"
@@ -11,6 +13,7 @@
 #include "settings.h"
 #include "ui.h"
 #include "fonts.h"
+#include <QAbstractButton>
 #include <QApplication>
 #include <QCheckBox>
 #include <QClipboard>
@@ -91,24 +94,49 @@ QString feedbackTempDir(const QString &configured = {}) {
     QDir().mkpath(dir);
     return dir;
 }
-// 将反馈 JSON 写入临时文件，返回文件路径。每次复制生成唯一文件名，避免覆盖上一次的引用。
-QString writeFeedbackTempFile(const QByteArray &bytes, const QString &configuredDir = {}) {
-    const QString dir = feedbackTempDir(configuredDir);
-    const QString name = "edithere-" + QDateTime::currentDateTime().toString("yyyyMMdd-HHmmss")
-                          + "-" + uniqueId().left(4) + ".json";
-    const QString path = QDir(dir).filePath(name);
-    saveBytes(path, bytes);
-    return path;
+// Each clipboard file bundle gets an owned directory, so relative references
+// remain valid when several exports coexist. All URLs are copied together.
+QString writeFeedbackTempBundle(const FeedbackBundle &bundle, const QString &configuredDir = {}) {
+    const QDir parent(feedbackTempDir(configuredDir));
+    const QString name = "edithere-" + QDateTime::currentDateTime().toString("yyyyMMdd-HHmmss") + "-" + uniqueId();
+    if (!parent.mkdir(name)) throw std::runtime_error("Unable to create feedback clipboard folder.");
+    const QDir directory(parent.filePath(name));
+    const QString marker = directory.filePath(".edithere-feedback-bundle");
+    try {
+        saveBytes(marker, "1\n");
+        const QString path = directory.filePath("feedback.json");
+        writeNewFeedbackBundle(path, bundle);
+        return path;
+    } catch (...) {
+        QFile::remove(marker); parent.rmdir(name); throw;
+    }
 }
-// 清理 7 天前的旧临时文件，保留当前路径对应的文件。
+QList<QUrl> feedbackBundleUrls(const QString &jsonPath, const FeedbackBundle &bundle) {
+    QList<QUrl> urls{QUrl::fromLocalFile(jsonPath)};
+    const QDir directory = QFileInfo(jsonPath).dir();
+    for (auto it = bundle.files.cbegin(); it != bundle.files.cend(); ++it) urls.append(QUrl::fromLocalFile(directory.filePath(it.key())));
+    return urls;
+}
 void cleanupOldFeedbackTempFiles(const QString &keepPath, const QString &configuredDir = {}) {
-    QDir d(feedbackTempDir(configuredDir));
+    QDir parent(feedbackTempDir(configuredDir));
     const auto cutoff = QDateTime::currentDateTime().addDays(-7);
-    for (const auto &name : d.entryList({"edithere-*.json"}, QDir::Files)) {
-        const QString path = d.filePath(name);
-        if (path == keepPath) continue;
-        if (QFileInfo(path).lastModified() < cutoff)
-            QFile::remove(path);
+    for (const auto &name : parent.entryList({"edithere-*.json"}, QDir::Files)) {
+        const QFileInfo file(parent.filePath(name));
+        if (file.absoluteFilePath() != keepPath && !file.isSymLink() && file.lastModified() < cutoff) QFile::remove(file.absoluteFilePath());
+    }
+    for (const auto &name : parent.entryList({"edithere-*"}, QDir::Dirs | QDir::NoDotAndDotDot)) {
+        const QFileInfo folder(parent.filePath(name));
+        if (folder.isSymLink() || folder.lastModified() >= cutoff || QFileInfo(keepPath).absolutePath() == folder.absoluteFilePath()) continue;
+        const QDir directory(folder.absoluteFilePath());
+        const QFileInfo marker(directory.filePath(".edithere-feedback-bundle"));
+        if (!marker.isFile() || marker.isSymLink()) continue;
+        const auto entries = directory.entryInfoList(QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot);
+        bool owned = true;
+        for (const auto &entry : entries) if (!entry.isFile() || entry.isSymLink() ||
+            !(entry.fileName() == ".edithere-feedback-bundle" || entry.fileName() == "feedback.json" || safeFeedbackImageName(entry.fileName()))) { owned = false; break; }
+        if (!owned) continue;
+        for (const auto &entry : entries) QFile::remove(entry.absoluteFilePath());
+        parent.rmdir(name);
     }
 }
 class JsonPreview final : public QPlainTextEdit {
@@ -160,6 +188,8 @@ Editor::Editor(QWidget *parent) : QWidget(parent) {
     brand->setObjectName("brand");
     header->addWidget(brand);
     meta_ = mutedLabel({}, bar);
+    meta_->setObjectName("captureContextLabel"); meta_->setTextFormat(Qt::PlainText);
+    meta_->setMaximumWidth(360); meta_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     header->addSpacing(10);
     header->addWidget(meta_);
     header->addStretch();
@@ -454,6 +484,9 @@ Editor::Editor(QWidget *parent) : QWidget(parent) {
         remember();
         for (auto &stored : doc_.notes)
             if (stored.id == n.id) {
+                if (!n.movementSource && (stored.isPoint != n.isPoint || stored.point != n.point || stored.rect != n.rect)) {
+                    n.recognizedText = {};
+                }
                 stored = n;
                 break;
             }
@@ -588,6 +621,33 @@ void Editor::retranslate() {
     }
     updateLayoutControls();
 }
+void Editor::updatePageContextLabel() {
+    const QJsonObject context = video_ && (videoPreview_ || !hasDocument() || !doc_.capture.contains("page"))
+                                    ? video_->capture : doc_.capture;
+    const QString page = context["page"].toString();
+    const QSize size = hasDocument() ? doc_.image.size() : videoPreview_ ? canvas_->imageSize() : QSize();
+    QString base = size.isEmpty() ? QString() : QString("%1 × %2").arg(size.width()).arg(size.height());
+    if (video_) base += " · " + videoTimeLabel(videoPreview_ ? video_->positionMs : std::max<qint64>(0, videoFrameUs_) / 1000);
+    const QString full = page.isEmpty() ? base : base.isEmpty() ? page : base + " · " + page;
+    meta_->setText(QFontMetrics(meta_->font()).elidedText(full, Qt::ElideRight, 350));
+    meta_->setToolTip(full);
+    meta_->setProperty("pageContext", page);
+}
+void Editor::setPageContext(const QString &page) {
+    const QString trimmed = page.trimmed();
+    validatePageContext(trimmed);
+    auto apply = [&](QJsonObject &capture, const QString &source, const QString &at) {
+        if (capture.isEmpty()) capture = {{"source", source}, {"capturedAt", at}};
+        capture["page"] = trimmed; capture["pageSource"] = "agent"; validateCaptureContext(capture);
+    };
+    if (video_) {
+        apply(video_->capture, "video", timestamp());
+        for (auto &frame : video_->frames) { apply(frame.document.capture, frame.document.source, frame.document.createdAt); frame.document.dirty = true; }
+        video_->dirty = true;
+    }
+    if (hasDocument()) { apply(doc_.capture, doc_.source, doc_.createdAt); doc_.dirty = true; commitVideoFrame(); }
+    updatePageContextLabel();
+}
 void Editor::showGuide() {
     finishNoteEdit();
     if (!hasDocument()) setDocument(fromImage(exampleImage(), "demo", tr("引导示例")));
@@ -656,6 +716,7 @@ void Editor::setDocument(Document document, const QString &projectPath) {
     if (!preserveView) detailsStack_->show();
     detailsStack_->setCurrentWidget(notesPanel_);
     meta_->setText(QString("%1 × %2").arg(doc_.image.width()).arg(doc_.image.height()));
+    updatePageContextLabel();
     renderNotes();
     if (!preserveView) {
         if (isMinimized()) setWindowState(windowState() & ~Qt::WindowMinimized);
@@ -726,6 +787,7 @@ void Editor::loadMedia(const QString &path) {
         if (!QFileInfo(path).isFile()) throw std::runtime_error(tr("视频文件不存在").toStdString());
         VideoProject project;
         project.source = QFileInfo(path).absoluteFilePath();
+        project.capture = {{"source", "video"}, {"capturedAt", timestamp()}, {"fileName", QFileInfo(path).fileName().left(1024)}};
         setVideoProject(std::move(project));
     } else if (isVideoProjectFile(path)) {
         setVideoProject(loadVideoProject(path), path.endsWith(".edithere", Qt::CaseInsensitive) ? path : QString());
@@ -763,6 +825,7 @@ void Editor::setVideoProject(VideoProject project, const QString &path) {
         videoPlayback_->open(video_->source, video_->positionMs);
     else toast(tr("源视频未找到，可查看已保存的批注画面，或重新指定视频。"));
     updateVideoFrames();
+    updatePageContextLabel();
 }
 void Editor::commitVideoFrame() {
     if (!video_ || videoFrameUs_ < 0 || doc_.image.isNull()) return;
@@ -805,6 +868,7 @@ void Editor::showVideoPreview(const QSize &size, qint64 timestampUs) {
     }
     video_->positionMs = std::max<qint64>(0, timestampUs / 1000);
     meta_->setText(tr("%1 × %2 · %3").arg(size.width()).arg(size.height()).arg(videoTimeLabel(video_->positionMs)));
+    updatePageContextLabel();
     syncVideoGeometry();
     auto view = videoPlayback_->videoWidget();
     if (!view->isVisible()) { view->show(); view->raise(); }
@@ -833,14 +897,19 @@ void Editor::displayVideoFrame(const QImage &image, qint64 timestampUs) {
             return frame.timestampUs == timestampUs;
         });
         if (it != video_->frames.cend()) next = it->document;
-        else next = fromImage(image.convertToFormat(QImage::Format_RGB32), "file",
-                              tr("视频画面 %1").arg(videoTimeLabel(timestampUs / 1000)), true);
+        else {
+            next = fromImage(image.convertToFormat(QImage::Format_RGB32), "video", tr("视频画面 %1").arg(videoTimeLabel(timestampUs / 1000)), true);
+            if (!video_->capture.isEmpty()) {
+                const auto capturedAt = next.createdAt; next.capture = video_->capture; next.capture["capturedAt"] = capturedAt;
+            }
+        }
         switchingVideoFrame_ = true;
         setDocument(std::move(next));
         switchingVideoFrame_ = false;
         videoFrameUs_ = timestampUs;
         video_->positionMs = timestampUs / 1000;
         meta_->setText(tr("%1 × %2 · %3").arg(doc_.image.width()).arg(doc_.image.height()).arg(videoTimeLabel(timestampUs / 1000)));
+        updatePageContextLabel();
         updateVideoFrames();
     } catch (const std::exception &error) {
         switchingVideoFrame_ = false;
@@ -859,6 +928,7 @@ void Editor::reviewVideoFrame(qint64 timestampUs) {
     switchingVideoFrame_ = true; setDocument(document); switchingVideoFrame_ = false;
     videoFrameUs_ = timestampUs; video_->positionMs = timestampUs / 1000;
     meta_->setText(tr("%1 × %2 · %3").arg(doc_.image.width()).arg(doc_.image.height()).arg(videoTimeLabel(timestampUs / 1000)));
+    updatePageContextLabel();
     updateVideoFrames();
 }
 void Editor::updateVideoFrames() {
@@ -889,7 +959,9 @@ QByteArray Editor::projectBytes() {
 }
 QByteArray Editor::feedbackBytes(bool embed, bool compress) {
     finishNoteEdit(); commitVideoFrame();
-    return video_ ? serializeVideoFeedback(*video_, embed, compress) : serializeFeedback(doc_, embed, compress);
+    FeedbackExportOptions options; options.mode = embed ? ImageExportMode::Embedded : ImageExportMode::None;
+    options.compress = compress; options.includeRecognizedText = preferences_.includeRecognizedText; options.includeWindowTitle = preferences_.includeWindowTitle;
+    return video_ ? serializeVideoFeedback(*video_, options) : serializeFeedback(doc_, options);
 }
 void Editor::toggleFullscreen() {
     stopViewportPan();
@@ -1084,8 +1156,16 @@ QString Editor::coords(const Note &n) const {
 void Editor::renderNotes() {
     if (renderingNotes_) return;
     renderingNotes_ = true;
+    const auto markers = doc_.layout ? movementMarkers(*doc_.layout, doc_.notes) : QVector<MovementMarker>{};
+    const auto orphanKey = [](const QRectF &source) {
+        return "__mv_" + QString::number(qint64(source.left())) + "_" + QString::number(qint64(source.top()));
+    };
     QSet<QString> retained;
     for (const auto &note : doc_.notes) retained.insert(note.id);
+    // A focus-out or OCR refresh can happen between a button press and release.
+    // Keep movement-only cards alive while their movement still exists.
+    for (const auto &marker : markers)
+        if (marker.noteIndex < 0) retained.insert(orphanKey(marker.source));
     for (auto it = noteCards_.begin(); it != noteCards_.end();) {
         if (!retained.contains(it.key())) {
             if (it.value()) { noteLayout_->removeWidget(it.value()); it.value()->hide(); it.value()->deleteLater(); }
@@ -1133,6 +1213,43 @@ void Editor::renderNotes() {
             text->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
             text->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
             l->addWidget(text);
+            auto recognition = new QWidget(card);
+            recognition->setObjectName("recognizedTextSection");
+            auto recognitionLayout = new QVBoxLayout(recognition);
+            recognitionLayout->setContentsMargins(0, 4, 0, 0); recognitionLayout->setSpacing(2);
+            auto recognitionRow = new QHBoxLayout;
+            auto recognitionLabel = mutedLabel(tr("区域文字"), recognition);
+            recognitionLabel->setObjectName("recognizedTextLabel"); recognitionRow->addWidget(recognitionLabel, 1);
+            auto clearRecognition = iconButton("trash", tr("删除识别文字"), recognition);
+            clearRecognition->setObjectName("clearRecognizedText"); clearRecognition->setFixedSize(24, 24);
+            recognitionRow->addWidget(clearRecognition); recognitionLayout->addLayout(recognitionRow);
+            auto recognized = new InlineNoteEdit(recognition);
+            recognized->setObjectName("recognizedText_" + n.id); recognized->setProperty("noteId", n.id);
+            recognized->setAccessibleName(tr("识别的区域文字")); recognized->setTabChangesFocus(true);
+            recognized->setExpanded(false); recognitionLayout->addWidget(recognized);
+            l->addWidget(recognition);
+            recognized->started = [this, id=n.id] { beginNoteEdit(id); };
+            recognized->finished = [this, id=n.id] { QTimer::singleShot(0, this, [this,id] { if (editingId_ == id) finishNoteEdit(); }); };
+            recognized->cancelled = [this] { cancelNoteEdit(); };
+            connect(recognized, &QPlainTextEdit::textChanged, this, [this,recognized,id=n.id] {
+                recognized->fitContent();
+                if (renderingNotes_) return;
+                beginNoteEdit(id);
+                auto value = recognized->toPlainText().left(500);
+                if (!value.isEmpty() && value.back().isHighSurrogate()) value.chop(1);
+                if (recognized->toPlainText() != value) { QSignalBlocker blocker(recognized); recognized->setPlainText(value); }
+                for (auto &note : doc_.notes) if (note.id == id) {
+                    if (value.trimmed().isEmpty()) updateRecognizedText(id, {{"text", ""}, {"edited", true}});
+                    else { auto metadata = note.recognizedText; metadata.insert("text", value); metadata.insert("edited", true); metadata.remove("confidence"); updateRecognizedText(id, metadata); }
+                    break;
+                }
+                doc_.dirty = true;
+            });
+            connect(clearRecognition, &QPushButton::clicked, this, [this,id=n.id] {
+                finishNoteEdit(); remember();
+                updateRecognizedText(id, {{"text", ""}, {"edited", true}});
+                changed();
+            });
             auto fold = new QPushButton(card);
             fold->setObjectName("foldNote");
             fold->setProperty("noteId", n.id);
@@ -1173,9 +1290,7 @@ void Editor::renderNotes() {
             });
             connect(edit, &QPushButton::clicked, this, [this,id=n.id] { focusNote(id); });
             connect(remove, &QPushButton::clicked, this, [this,id=n.id] {
-                finishNoteEdit(); remember();
-                doc_.notes.removeIf([&](const Note &note) { return note.id==id; });
-                canvas_->select({}); changed();
+                deleteNote(id);
             });
         }
         if (n.movementSource) {
@@ -1184,6 +1299,10 @@ void Editor::renderNotes() {
             card->setProperty("movementDestination", QRectF(n.rect));
             card->setCursor(Qt::PointingHandCursor);
             for (auto label : card->findChildren<QLabel *>()) label->installEventFilter(this);
+        } else {
+            card->setProperty("movementSource", QVariant());
+            card->setProperty("movementDestination", QVariant());
+            card->setCursor(Qt::ArrowCursor);
         }
         card->setProperty("selected", canvas_->selected().contains(n.id));
         card->style()->unpolish(card); card->style()->polish(card);
@@ -1194,16 +1313,20 @@ void Editor::renderNotes() {
         if (!text->hasFocus() && text->toPlainText()!=n.comment) { QSignalBlocker blocker(text); text->setPlainText(n.comment); }
         text->setAccessibleName(tr("批注 %1 内容").arg(number));
         text->fitContent();
+        auto recognition = card->findChild<QWidget *>("recognizedTextSection");
+        auto recognized = static_cast<InlineNoteEdit *>(recognition->findChild<QPlainTextEdit *>("recognizedText_" + n.id));
+        const auto recognizedText = n.recognizedText["text"].toString();
+        if (!recognized->hasFocus() && recognized->toPlainText() != recognizedText) { QSignalBlocker blocker(recognized); recognized->setPlainText(recognizedText); }
+        recognized->fitContent();
+        recognition->setVisible(!recognizedText.isEmpty());
         noteLayout_->insertWidget(number-1,card,0,Qt::AlignTop);
     }
     // Display movements without text annotations as orphan cards.
     if (doc_.layout) {
-        const auto markers = movementMarkers(*doc_.layout, doc_.notes);
         for (const auto &marker : markers) {
             if (marker.noteIndex >= 0)
                 continue; // already shown as a note card
-            const QString key = "__mv_" + QString::number(qint64(marker.source.left())) + "_"
-                                + QString::number(qint64(marker.source.top()));
+            const QString key = orphanKey(marker.source);
             QWidget *card = noteCards_.value(key);
             if (!card) {
                 auto frame = new QFrame(noteContainer_);
@@ -1227,6 +1350,11 @@ void Editor::renderNotes() {
                 position->setObjectName("noteCoordinates");
                 position->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
                 row->addWidget(position, 1);
+                auto remove = iconButton("trash", tr("删除批注"), card);
+                remove->setFixedSize(24, 24); row->addWidget(remove);
+                connect(remove, &QPushButton::clicked, this, [this,card,key] {
+                    deleteNote(key, card->property("movementSource").toRectF());
+                });
                 l->addLayout(row);
                 auto text = mutedLabel(tr("点击此处为这次移动添加文字…"), card);
                 text->setWordWrap(true);
@@ -1266,7 +1394,7 @@ void Editor::finishNoteEdit() {
     for (auto &note : doc_.notes) if (note.id==id) {
         note.comment=note.comment.trimmed();
         if (note.comment.isEmpty() && id!=draftId_)
-            for (const auto &before : editingBaseline_.notes) if (before.id==id) note=before;
+            for (const auto &before : editingBaseline_.notes) if (before.id==id) note.comment=before.comment;
         break;
     }
     if (id==draftId_) doc_.notes.removeIf([&](const Note &note) { return note.id==id && note.comment.isEmpty(); });
@@ -1337,6 +1465,12 @@ void Editor::editNote(Note note, bool fresh, QPoint) {
     }
     focusNote(note.id);
 }
+void Editor::updateRecognizedText(const QString &id, const QJsonObject &text) {
+    std::optional<QRectF> source;
+    for (const auto &note : doc_.notes) if (note.id == id) { source = note.movementSource; break; }
+    for (auto &note : doc_.notes)
+        if (note.id == id || (source && note.movementSource == source)) note.recognizedText = text;
+}
 void Editor::addGlobalNote() {
     if (!ensureVideoAnnotationFrame()) return;
     Note note; note.isGlobal=true;
@@ -1403,7 +1537,15 @@ bool Editor::eventFilter(QObject *object, QEvent *event) {
     if (event->type() == QEvent::MouseButtonPress &&
         static_cast<QMouseEvent *>(event)->button() == Qt::LeftButton) {
         auto card = qobject_cast<QWidget *>(object);
-        while (card && card->objectName() != "noteCard") card = card->parentWidget();
+        while (card && card->objectName() != "noteCard") {
+            // Let buttons and text editors receive their own mouse events.
+            // The card shortcut must not consume a delete press or text selection.
+            if (qobject_cast<QAbstractButton *>(card) || qobject_cast<QPlainTextEdit *>(card)) {
+                card = nullptr;
+                break;
+            }
+            card = card->parentWidget();
+        }
         if (card && card->property("movementSource").isValid()) {
             const auto source = card->property("movementSource").toRectF();
             const auto destination = card->property("movementDestination").toRectF();
@@ -1494,8 +1636,13 @@ void Editor::copyJsonText() {
     finishNoteEdit();
     if (!hasDocument() && !video_) return;
     try {
-        QApplication::clipboard()->setText(QString::fromUtf8(feedbackBytes(true, true)));
-        toast(tr("JSON 文本已复制，包含完整原图"));
+        FeedbackExportOptions options;
+        options.mode = preferences_.imageExportMode; options.preview = preferences_.includeFeedbackPreview; options.compress = true;
+        const auto bundle = agentFeedbackBundle(options);
+        QString path;
+        if (!bundle.files.isEmpty()) { path = writeFeedbackTempBundle(bundle, preferences_.feedbackDir); cleanupOldFeedbackTempFiles(path, preferences_.feedbackDir); }
+        QApplication::clipboard()->setText(QString::fromUtf8(bundle.json));
+        toast(path.isEmpty() ? tr("JSON 文本已复制") : tr("JSON 文本已复制，请同时提供配套图片：") + QFileInfo(path).absolutePath());
     } catch (const std::exception &error) { showError(QString::fromUtf8(error.what())); }
 }
 void Editor::showJsonHelp() {
@@ -1505,7 +1652,7 @@ void Editor::showJsonHelp() {
     help.setTextFormat(Qt::RichText);
     help.setText(tr(
         "<h3>1. 发送 JSON 文本被截断，又无法发送 JSON 文件？</h3>"
-        "<p>打开“查看 JSON”，关闭“包含原图”，点击“复制 JSON 内容”。然后向 Agent 上传原图，"
+        "<p>打开“查看 JSON”，选择“原图：不包含”，点击“复制 JSON 内容”。然后向 Agent 上传原图，"
         "再发送复制的带批注图片和这份 JSON 文本。</p>"
         "<h3>2. 都不支持上传，只支持对话怎么办？</h3>"
         "<p>可以尝试发送不包含原图信息的 JSON 文本。但由于没有附带原图，暂时无法确认效果。</p>"
@@ -1518,13 +1665,15 @@ void Editor::copyJson() {
     finishNoteEdit();
     if (!hasDocument() && !video_) return;
     try {
-        const QByteArray bytes = feedbackBytes(true, true);
-        const QString path = writeFeedbackTempFile(bytes, preferences_.feedbackDir);
+        FeedbackExportOptions options;
+        options.mode = preferences_.imageExportMode; options.preview = preferences_.includeFeedbackPreview; options.compress = true;
+        const auto bundle = agentFeedbackBundle(options);
+        const QString path = writeFeedbackTempBundle(bundle, preferences_.feedbackDir);
         cleanupOldFeedbackTempFiles(path, preferences_.feedbackDir);
         auto mime = new QMimeData;
-        mime->setUrls({QUrl::fromLocalFile(path)});
+        mime->setUrls(feedbackBundleUrls(path, bundle));
         QApplication::clipboard()->setMimeData(mime);
-        toast(tr("JSON 文件已复制，包含完整原图"));
+        toast(tr("JSON 与配套图片文件已复制"));
     } catch(const std::exception &error) { showError(QString::fromUtf8(error.what())); }
 }
 void Editor::changed(bool contentChanged) {
@@ -1752,10 +1901,20 @@ void Editor::removeSelected() {
     const auto id = canvas_->selected();
     if (id.isEmpty())
         return;
+    deleteNote(id);
+}
+void Editor::deleteNote(const QString &id, std::optional<QRectF> movementSource) {
+    finishNoteEdit();
     remember();
-    doc_.notes.removeIf([&](const Note &n) { return n.id == id; });
+    if (movementSource) {
+        Note note; note.id = id; note.isPoint = false; note.movementSource = movementSource;
+        note.rect = movementSource->toAlignedRect(); doc_.notes.append(note);
+    }
+    removeNote(doc_, id);
+    if (layoutCanvas_ && doc_.layout) layoutCanvas_->setState(*doc_.layout);
     canvas_->select({});
     changed();
+    updateLayoutControls();
 }
 void Editor::copyImage() {
     finishNoteEdit();
@@ -1815,6 +1974,13 @@ QByteArray Editor::agentFeedback(bool embed) {
     finishNoteEdit();
     return feedbackBytes(embed);
 }
+FeedbackBundle Editor::agentFeedbackBundle(FeedbackExportOptions options) {
+    finishNoteEdit(); commitVideoFrame();
+    options.includeRecognizedText = preferences_.includeRecognizedText;
+    options.includeWindowTitle = preferences_.includeWindowTitle;
+    return video_ ? buildVideoFeedbackBundle(*video_, options) : buildFeedbackBundle(doc_, options);
+}
+
 bool Editor::allowReplace() {
     if (agentSession_) {
         toast(tr("请先完成或取消当前 AI 批注任务"));
@@ -1969,194 +2135,95 @@ void Editor::saveImage(bool annotated) {
 }
 void Editor::exportJson() {
     finishNoteEdit();
-    if (!hasDocument() && !video_)
-        return;
+    if (!hasDocument() && !video_) return;
     QDialog dialog(this);
-    dialog.setObjectName("feedbackDialog");
-    dialog.setWindowTitle(tr("查看 JSON"));
-    dialog.resize(730, 640);
-    auto layout = new QVBoxLayout(&dialog);
-    layout->setContentsMargins(24, 22, 24, 22);
+    dialog.setObjectName("feedbackDialog"); dialog.setWindowTitle(tr("查看 JSON")); dialog.resize(730, 640);
+    auto layout = new QVBoxLayout(&dialog); layout->setContentsMargins(24, 22, 24, 22);
     auto title = new QLabel(tr("查看 JSON  ·  批注 %1 条").arg(totalAnnotationCount()), &dialog);
-    QFont font = title->font();
-    font.setPointSize(15);
-    font.setBold(true);
-    title->setFont(font);
-    layout->addWidget(title);
-    auto embed = new QCheckBox(tr("包含原图，可独立还原"), &dialog);
-    embed->setObjectName("embedOriginal");
-    embed->setChecked(preferences_.embedOriginal);
-    layout->addWidget(embed);
-    auto compress = new QCheckBox(tr("压缩示意图（保持尺寸，可能轻微损失细节）"), &dialog);
-    compress->setObjectName("compressFeedbackImage"); compress->setChecked(true);
-    layout->addWidget(compress);
-    auto json = new JsonPreview(&dialog);
-    json->setAccessibleName(tr("标准化 JSON"));
-    json->setReadOnly(true);
-    json->setLineWrapMode(QPlainTextEdit::WidgetWidth);
-    json->setFont(QFont(h2d::monoFontFamily(), 10));
-    layout->addWidget(json, 1);
-    auto status = mutedLabel({}, &dialog);
-    status->setObjectName("exportStatus");
-    status->setWordWrap(true);
-    layout->addWidget(status);
+    QFont font = title->font(); font.setPointSize(15); font.setBold(true); title->setFont(font); layout->addWidget(title);
+    auto imageMode = new QComboBox(&dialog); imageMode->setObjectName("feedbackImageMode");
+    imageMode->addItem(tr("原图：随文件保存"), int(ImageExportMode::File));
+    imageMode->addItem(tr("原图：内嵌到 JSON"), int(ImageExportMode::Embedded));
+    imageMode->addItem(tr("原图：不包含"), int(ImageExportMode::None));
+    imageMode->setCurrentIndex(imageMode->findData(int(preferences_.imageExportMode))); layout->addWidget(imageMode);
+    auto preview = new QCheckBox(tr("附带标注示意图（JPEG）"), &dialog); preview->setObjectName("feedbackPreview");
+    preview->setChecked(preferences_.includeFeedbackPreview); layout->addWidget(preview);
+    auto compress = new QCheckBox(tr("压缩内嵌原图与示意图（保持尺寸，可能轻微损失细节）"), &dialog);
+    compress->setObjectName("compressFeedbackImage"); compress->setChecked(true); layout->addWidget(compress);
+    auto json = new JsonPreview(&dialog); json->setAccessibleName(tr("标准化 JSON")); json->setReadOnly(true);
+    json->setLineWrapMode(QPlainTextEdit::WidgetWidth); json->setFont(QFont(h2d::monoFontFamily(), 10)); layout->addWidget(json, 1);
+    auto status = mutedLabel({}, &dialog); status->setObjectName("exportStatus"); status->setWordWrap(true); layout->addWidget(status);
     auto row = new QHBoxLayout;
     auto save = textButton(tr("保存 JSON 与图片"), false, &dialog), close = textButton(tr("关闭"), false, &dialog),
-         copy = textButton(tr("复制 JSON 文件"), true, &dialog);
-    auto copyText = textButton(tr("复制 JSON 内容"), false, &dialog);
-    copy->setObjectName("copyJsonFile");
-    copyText->setObjectName("copyJsonText");
-    save->setProperty("glyphName","feedback-save");save->setIcon(glyph("feedback-save"));
-    close->setProperty("glyphName","close");close->setIcon(glyph("close"));
-    copy->setProperty("glyphName","json-copy-file");copy->setIcon(glyph("json-copy-file",Qt::white));
-    copyText->setProperty("glyphName","json-copy-text");copyText->setIcon(glyph("json-copy-text"));
-    save->setObjectName("saveFeedbackBundle");
-    row->addWidget(save);
-    row->addStretch();
-    row->addWidget(close);
-    row->addWidget(copyText);
-    row->addWidget(copy);
-    layout->addLayout(row);
-    QByteArray exportBytes;
+         copy = textButton(tr("复制 JSON 文件"), true, &dialog), copyText = textButton(tr("复制 JSON 内容"), false, &dialog);
+    save->setObjectName("saveFeedbackBundle"); copy->setObjectName("copyJsonFile"); copyText->setObjectName("copyJsonText");
+    save->setProperty("glyphName", "feedback-save"); save->setIcon(glyph("feedback-save"));
+    close->setProperty("glyphName", "close"); close->setIcon(glyph("close"));
+    copy->setProperty("glyphName", "json-copy-file"); copy->setIcon(glyph("json-copy-file", Qt::white));
+    copyText->setProperty("glyphName", "json-copy-text"); copyText->setIcon(glyph("json-copy-text"));
+    row->addWidget(save); row->addStretch(); row->addWidget(close); row->addWidget(copyText); row->addWidget(copy); layout->addLayout(row);
+    FeedbackBundle bundle;
     auto refresh = [&] {
         try {
-            exportBytes = feedbackBytes(embed->isChecked(), compress->isChecked());
-            const auto feedback = QJsonDocument::fromJson(exportBytes).object();
+            FeedbackExportOptions options; options.mode = static_cast<ImageExportMode>(imageMode->currentData().toInt());
+            options.preview = preview->isChecked(); options.compress = compress->isChecked();
+            compress->setEnabled(options.mode == ImageExportMode::Embedded || options.preview);
+            bundle = agentFeedbackBundle(options);
+            auto readable = QJsonDocument::fromJson(bundle.json).object();
+            auto fold = [&](QJsonObject feedback) {
+                auto image = feedback["image"].toObject();
+                if (image.contains("dataUrl")) image["dataUrl"] = image["dataUrl"].toString().section(',', 0, 0) + tr(",[图片编码已折叠]");
+                feedback["image"] = image; return feedback;
+            };
             if (video_) {
-                auto readable = feedback;
                 auto frames = readable["frames"].toArray();
-                for (qsizetype index = 0; index < frames.size(); ++index) {
-                    auto frame = frames[index].toObject();
-                    auto nested = frame["feedback"].toObject();
-                    if (nested.contains("image"))
-                        nested["image"] = nested["image"].toString().section(',', 0, 0) + tr(",[图片编码已折叠]");
-                    frame["feedback"] = nested; frames[index] = frame;
-                }
+                for (qsizetype index = 0; index < frames.size(); ++index) { auto frame = frames[index].toObject(); frame["feedback"] = fold(frame["feedback"].toObject()); frames[index] = frame; }
                 readable["frames"] = frames;
-                json->setPlainText(QString::fromUtf8(QJsonDocument(readable).toJson(QJsonDocument::Indented)));
-                copyText->setEnabled(true); copy->setEnabled(true); save->setEnabled(true);
-                status->setText(tr("%1 个批注画面 · 时间戳为视频相对时间 · 复制和保存包含完整 JSON")
-                    .arg(frames.size()));
-                return;
-            }
-            QStringList lines{"{"};
-            if (embed->isChecked())
-                lines.append(
-                    "  \"image\": \"" + feedback["image"].toString().section(',',0,0) +
-                        QCoreApplication::translate("h2d", ",[图片编码已折叠]\","));
-            lines.append("  \"annotationSpace\": \"result\",");
-            lines.append("  \"objects\": [");
-            const auto objects = feedback["objects"].toArray();
-            for (qsizetype i = 0; i < objects.size(); ++i)
-                lines.append("    " +
-                             QString::fromUtf8(
-                                 QJsonDocument(objects[i].toObject()).toJson(QJsonDocument::Compact)) +
-                             (i + 1 < objects.size() ? "," : ""));
-            lines.append("  ]");
-            lines.append("}");
-            json->setPlainText(lines.join('\n'));
-            copy->setToolTip(embed->isChecked()
-                ? tr("直接复制文件（携带原图信息），适用于可以发送文件的 Agent。")
-                : tr("直接复制文件（不包含原图信息），适用于可以发送文件的 Agent。"));
-            copyText->setToolTip(embed->isChecked()
-                ? tr("复制 JSON 文本（携带原图信息），适用于无法发送文件的 Agent。")
-                : tr("复制 JSON 文本（不包含原图信息），适用于无法发送文件的 Agent。"));
-            copyText->setEnabled(true);
-            copy->setEnabled(true);
-            save->setEnabled(true);
-            status->setText(tr("%1 · %2 字符 · 批注坐标对应调整后的画面")
-                                .arg(embed->isChecked() ? tr("图片编码仅在预览中折叠，复制/保存包含图片")
-                                                        : tr("未包含原图，重新打开需同名 PNG"))
-                                .arg(QString::fromUtf8(exportBytes).size()));
+            } else readable = fold(readable);
+            json->setPlainText(QString::fromUtf8(QJsonDocument(readable).toJson(QJsonDocument::Indented)));
+            save->setEnabled(true); copy->setEnabled(true); copyText->setEnabled(true);
+            status->setText(options.mode == ImageExportMode::File ? tr("原图作为配套文件保存；请将 JSON 与图片一起交给 Agent。")
+                : options.mode == ImageExportMode::Embedded ? tr("图片编码仅在预览中折叠，复制与保存包含完整原图。")
+                : tr("仅包含原图尺寸与校验值；接收方需要持有同一原图。"));
         } catch (const std::exception &error) {
-            exportBytes.clear();
-            diagnostics::write(diagnostics::Level::Error, "editor.feedback_preview", QString::fromUtf8(error.what()));
-            json->clear();
-            copyText->setEnabled(false);
-            copy->setEnabled(false);
-            save->setEnabled(false);
+            bundle = {}; json->clear(); save->setEnabled(false); copy->setEnabled(false); copyText->setEnabled(false);
             status->setText(QString::fromUtf8(error.what()));
-        }
-    };
-    refresh();
-    connect(embed, &QCheckBox::toggled, &dialog, refresh);
-    connect(compress, &QCheckBox::toggled, &dialog, refresh);
-    connect(close, &QPushButton::clicked, &dialog, &QDialog::accept);
-    auto copyJson = [&] {
-        if (exportBytes.isEmpty())
-            return;
-        try {
-            const QString path = writeFeedbackTempFile(exportBytes, preferences_.feedbackDir);
-            cleanupOldFeedbackTempFiles(path, preferences_.feedbackDir);
-            auto mime = new QMimeData;
-            mime->setUrls({QUrl::fromLocalFile(path)});
-            QApplication::clipboard()->setMimeData(mime);
-            status->setText(embed->isChecked() ? tr("JSON 文件已复制，包含完整原图") : tr("JSON 文件已复制，未包含原图"));
-        } catch (const std::exception &error) {
-            status->setText(QString::fromUtf8(error.what()));
-            diagnostics::write(diagnostics::Level::Error, "editor.feedback_copy", QString::fromUtf8(error.what()));
         }
     };
     auto copyJsonText = [&] {
-        if (exportBytes.isEmpty()) return;
-        QApplication::clipboard()->setText(QString::fromUtf8(exportBytes));
-        status->setText(embed->isChecked() ? tr("JSON 文本已复制，包含完整原图")
-                                         : tr("JSON 文本已复制，未包含原图"));
+        if (bundle.json.isEmpty()) return;
+        try {
+            QString path;
+            if (!bundle.files.isEmpty()) { path = writeFeedbackTempBundle(bundle, preferences_.feedbackDir); cleanupOldFeedbackTempFiles(path, preferences_.feedbackDir); }
+            QApplication::clipboard()->setText(QString::fromUtf8(bundle.json));
+            status->setText(path.isEmpty() ? tr("JSON 文本已复制") : tr("JSON 文本已复制，请同时提供配套图片：") + QFileInfo(path).absolutePath());
+        } catch (const std::exception &error) { status->setText(QString::fromUtf8(error.what())); }
     };
     json->copyJson = copyJsonText;
+    connect(imageMode, &QComboBox::currentIndexChanged, &dialog, refresh);
+    connect(preview, &QCheckBox::toggled, &dialog, refresh); connect(compress, &QCheckBox::toggled, &dialog, refresh);
+    connect(close, &QPushButton::clicked, &dialog, &QDialog::accept);
     connect(copyText, &QPushButton::clicked, &dialog, copyJsonText);
-    connect(copy, &QPushButton::clicked, &dialog, copyJson);
-    connect(save, &QPushButton::clicked, &dialog, [&] {
-        if (exportBytes.isEmpty())
-            return;
-        QString base = QFileDialog::getExistingDirectory(&dialog, tr("选择导出目录"));
-        if (base.isEmpty())
-            return;
+    connect(copy, &QPushButton::clicked, &dialog, [&] {
+        if (bundle.json.isEmpty()) return;
         try {
-            if (video_) {
-                commitVideoFrame();
-                const QString folder = QDir(base).filePath("EditHere-video-" + QDateTime::currentDateTime().toString("yyyyMMdd-HHmmss") + "-" + uniqueId().left(4));
-                if (!QDir().mkpath(folder)) throw std::runtime_error("Unable to create export folder");
-                const QDir directory(folder);
-                for (const auto &frame : video_->frames) {
-                    saveBytes(directory.filePath("frame-" + frame.document.id + ".png"), frame.document.png);
-                    saveBytes(directory.filePath("annotations-" + frame.document.id + ".png"), encodePng(previewImage(frame.document)));
-                }
-                saveBytes(directory.filePath("feedback.json"), exportBytes);
-                status->setText(tr("视频 JSON 与所有批注帧截图已保存到：") + folder);
-                return;
-            }
-            validateProjectStorageSize(exportBytes.size(), embed->isChecked() ? 0 : doc_.png.size());
-            QString folder =
-                QDir(base).filePath("EditHere-" + QDateTime::currentDateTime().toString("yyyyMMdd-HHmmss") +
-                                    "-" + uniqueId().left(4));
-            if (!QDir().mkpath(folder))
-                throw std::runtime_error(tr("无法创建导出目录").toStdString());
-            QDir dir(folder);
-            saveBytes(dir.filePath("feedback.png"), doc_.png);
-            saveBytes(dir.filePath("feedback.json"), exportBytes);
-            // Optional visual previews must not prevent saving the original and feedback.
-            QStringList unavailable;
-            try {
-                saveBytes(dir.filePath("annotations.png"), encodePng(previewImage(doc_)));
-            } catch (const std::exception &e) {
-                unavailable.append(tr("批注预览未保存：") + QString::fromUtf8(e.what()));
-            }
-            if (doc_.layout && !exportFeedback(doc_)["objects"].toArray().isEmpty()) {
-                try {
-                    saveBytes(dir.filePath("result.png"), encodePng(renderLayout(doc_.image, *doc_.layout)));
-                } catch (const std::exception &e) {
-                    unavailable.append(tr("调整效果图未保存：") + QString::fromUtf8(e.what()));
-                }
-            }
-            status->setText(unavailable.isEmpty()
-                                ? tr("已保存到：") + folder
-                                : tr("JSON 与原图已保存到：") + folder + "\n" + unavailable.join('\n'));
-        } catch (const std::exception &e) {
-            status->setText(QString::fromUtf8(e.what()));
-        }
+            const QString path = writeFeedbackTempBundle(bundle, preferences_.feedbackDir); cleanupOldFeedbackTempFiles(path, preferences_.feedbackDir);
+            auto mime = new QMimeData; mime->setUrls(feedbackBundleUrls(path, bundle)); QApplication::clipboard()->setMimeData(mime);
+            status->setText(tr("JSON 与配套图片文件已复制"));
+        } catch (const std::exception &error) { status->setText(QString::fromUtf8(error.what())); }
     });
-    dialog.exec();
+    connect(save, &QPushButton::clicked, &dialog, [&] {
+        if (bundle.json.isEmpty()) return;
+        const QString base = QFileDialog::getExistingDirectory(&dialog, tr("选择导出目录")); if (base.isEmpty()) return;
+        const QString name = "EditHere-" + QDateTime::currentDateTime().toString("yyyyMMdd-HHmmss") + "-" + uniqueId();
+        const QDir parent(base);
+        try {
+            if (!parent.mkdir(name)) throw std::runtime_error("Unable to create export directory.");
+            const QString path = QDir(parent.filePath(name)).filePath("feedback.json");
+            writeNewFeedbackBundle(path, bundle); status->setText(tr("已保存到：") + parent.filePath(name));
+        } catch (const std::exception &error) { parent.rmdir(name); status->setText(QString::fromUtf8(error.what())); }
+    });
+    refresh(); dialog.exec();
 }
 void Editor::showContext(QPoint p) {
     finishNoteEdit();

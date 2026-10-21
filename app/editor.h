@@ -29,6 +29,8 @@ class Editor final : public QWidget {
     void setAgentSession(bool active);
     bool hasUnsavedChanges();
     QByteArray agentFeedback(bool embed);
+    FeedbackBundle agentFeedbackBundle(FeedbackExportOptions options);
+    void setPageContext(const QString &page);
     void setPreferences(const AppSettings &settings);
     void setShortcuts(const QMap<QString, QKeySequence> &bindings);
     const Document &document() const {
@@ -93,6 +95,7 @@ class Editor final : public QWidget {
 
   private:
     void editNote(Note note, bool fresh, QPoint global);
+    void updateRecognizedText(const QString &id, const QJsonObject &text);
     void changed(bool contentChanged = true);
     void renderNotes();
     // Rebuilds every label of the permanent chrome. Called from the constructor
@@ -101,6 +104,7 @@ class Editor final : public QWidget {
     // What the window says while there is no picture in it, and whether it says it.
     void updateEmptyState();
     void updateToolLabels();
+    void updatePageContextLabel();
     void beginNoteEdit(const QString &id);
     void finishNoteEdit();
     void cancelNoteEdit();
@@ -125,6 +129,7 @@ class Editor final : public QWidget {
     void copyImage();
     void saveImage(bool annotated = false);
     void removeSelected();
+    void deleteNote(const QString &id, std::optional<QRectF> movementSource = {});
     void setMode(Canvas::Mode mode);
     void updateControls();
     void clearVideo();
