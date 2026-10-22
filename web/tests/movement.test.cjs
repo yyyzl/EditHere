@@ -16,7 +16,8 @@ const legacyObjects = objects => objects.map(feedback.legacyObject).map(({id, ..
 // are stubbed; transforms, note submission, reset, history and feedback export
 // below all call the real closures from app.js.
 function appHarness() {
-  const elements = new Map();
+  const elements = new Map(), confirmations = [];
+  let allowReplacement = true;
   const drawing = new Proxy({}, { get: (object, key) => object[key] ?? (() => {}), set: (object, key, value) => (object[key] = value, true) });
   function element(id) {
     if (!elements.has(id)) {
@@ -25,7 +26,7 @@ function appHarness() {
         classList: { add: name => classes.add(name), remove: name => classes.delete(name), toggle: (name, force) => force ? classes.add(name) : classes.delete(name), contains: name => classes.has(name) },
         addEventListener() {}, setAttribute() {}, removeAttribute() {}, focus() {}, select() {}, setCustomValidity() {}, reportValidity() {}, append() {},
         querySelector: selector => element(id + ' ' + selector), querySelectorAll: () => [],
-        getContext: () => drawing, getBoundingClientRect: () => ({ x: 0, y: 0, left: 0, top: 0, right: 200, bottom: 100, width: 200, height: 100 }),
+        toDataURL: () => image, getContext: () => drawing, getBoundingClientRect: () => ({ x: 0, y: 0, left: 0, top: 0, right: 200, bottom: 100, width: 200, height: 100 }),
         showModal() { this.open = true; }, close() { this.open = false; }, click() { return this.onclick?.(); },
         pause() {}, load() {}, hasPointerCapture: () => false, releasePointerCapture() {}, setPointerCapture() {}, clientWidth: 200, clientHeight: 100 };
       elements.set(id, node);
@@ -35,6 +36,8 @@ function appHarness() {
   const document = { getElementById: element, querySelector: selector => element(selector.replace(/^#/, '')), querySelectorAll: () => [],
     addEventListener() {}, createElement: tag => element('created-' + tag), documentElement: { outerHTML: '', cloneNode:()=>({outerHTML:'',querySelectorAll:()=>[]}) }, body: element('body') };
   const sandbox = { document, EditHereLayout: layout, EditHereFeedback: feedback, EditHereImage:imageFormat,EditHereBundle:bundle, window: { addEventListener() {}, dispatchEvent() {} }, Event:class {}, console,
+    confirm: message => { confirmations.push(message); return allowReplacement; }, btoa,
+    URL: { createObjectURL: () => 'blob:test-image', revokeObjectURL() {} },
     ResizeObserver: class { observe() {} }, setTimeout: () => 0, clearTimeout() {}, getComputedStyle: () => ({ display: 'block', visibility: 'visible', opacity: '1' }),
     // Media decoding is outside these model tests. Preserve fixture dimensions
     // while exercising the actual project metadata restore/validation path.
@@ -75,6 +78,12 @@ function appHarness() {
         chooseGroup(null);
       },
       async restoreAgentFeedback(value) { await globalThis.EditHereWeb.loadAgentFeedback({image:typeof value.image==='string'?value.image:value.image.dataUrl||${JSON.stringify(image)},name:'saved-feedback',feedback:value}); },
+      openFiles(files) { return openFiles(files); },
+      pasteImage(file) { return openFile(file, 'clipboard'); },
+      addGlobal(text) { $('global').onclick(); $('note-text').value = text; $('note-form').onsubmit({ preventDefault() {} }); },
+      importState() { return clone({name:session.name,dirty,revision:projectRevision,pending:pendingImport?.name||null,
+        undo:history().undo.length,redo:history().redo.length,document:serializedDoc(doc)}); },
+      bindAgent() { globalThis.EditHereWeb.bindAgent(); },
       rawFeedback() { return feedback(); },
       feedback() { return F.exportImage(feedbackDocument(doc,'none'),'none'); }
     };
@@ -82,7 +91,8 @@ function appHarness() {
   assert.match(production, /\}\)\(\);\s*$/, 'app IIFE must have an identifiable end');
   vm.runInContext(production.replace(/\}\)\(\);\s*$/, exposure + '\n})();'), sandbox, { filename: 'app.js' });
   const actual = sandbox.__movementTest;
-  return { ...actual, state: () => plain(actual.state()), rawFeedback: () => plain(actual.rawFeedback()), feedback: () => {
+  return { ...actual, decideReplacement: value => { allowReplacement = value; }, confirmationCount: () => confirmations.length,
+    importState: () => plain(actual.importState()), state: () => plain(actual.state()), rawFeedback: () => plain(actual.rawFeedback()), feedback: () => {
     const {$schema, schemaVersion, tool, exportedAt, image:descriptor, ...value} = plain(actual.feedback());
     return {...value, objects:legacyObjects(value.objects)}; // Geometry fixtures compare content; numbered exports are covered directly below.
   }, noteBounds: id => plain(actual.noteBounds(id)), serialized: () => plain(actual.serialized()) };
@@ -103,6 +113,58 @@ function groupPieces(value, id) {
   const members = new Set(value.groups.find(group => group.id === id).pieces);
   return value.pieces.filter(piece => members.has(piece.id));
 }
+
+function pendingImportFixture() {
+  const app = appHarness();
+  app.load(layout.create(200, 100));
+  const value = feedback.exportImage({image, imageFile:'companion.png', movements:[],
+    notes:[{source:null, text:'Imported feedback'}]}, 'file');
+  const text = JSON.stringify(value), bytes = Uint8Array.from(Buffer.from(image.split(',')[1], 'base64'));
+  return {app, json:{name:'pending.json', type:'application/json', size:Buffer.byteLength(text), text:async()=>text},
+    companion:{name:'companion.png', type:'image/png', arrayBuffer:async()=>bytes.buffer}};
+}
+
+test('pending feedback import rechecks unsaved work and cancellation preserves notes and history', async () => {
+  const {app,json,companion} = pendingImportFixture();
+  await assert.rejects(() => app.openFiles([json]), /companion\.png/);
+  app.addGlobal('Unsaved work added after the failed import');
+  const before = app.importState();
+  app.decideReplacement(false);
+  await app.openFiles([companion]);
+  assert.equal(app.confirmationCount(), 1, 'continuing an import must ask about edits made since its first attempt');
+  assert.deepEqual(app.importState(), before, 'cancel preserves the pending import, pixels, notes, dirty flag and history');
+  app.undo(); assert.equal(app.state().notes.length, 0);
+  app.redo(); assert.deepEqual(app.serialized(), before.document);
+  app.decideReplacement(true);
+  await app.openFiles([companion]);
+  const imported = app.importState();
+  assert.equal(app.confirmationCount(), 2);
+  assert.equal(imported.name, 'pending.json');
+  assert.equal(imported.document.notes[0].text, 'Imported feedback');
+  assert.equal(imported.pending, null);
+  assert.equal(imported.dirty, false);
+});
+
+test('pending feedback import cannot replace an Agent-bound document', async () => {
+  const {app,json,companion} = pendingImportFixture();
+  await assert.rejects(() => app.openFiles([json]), /companion\.png/);
+  app.bindAgent();
+  const before = app.importState();
+  await app.openFiles([companion]);
+  assert.deepEqual(app.importState(), before);
+  assert.equal(app.confirmationCount(), 0, 'Agent protection rejects replacement before any discard confirmation');
+});
+
+test('successful clipboard replacement clears an obsolete pending feedback import', async () => {
+  const {app,json,companion} = pendingImportFixture();
+  await assert.rejects(() => app.openFiles([json]), /companion\.png/);
+  await app.pasteImage({name:'pasted.png',type:'image/png'});
+  assert.equal(app.importState().pending, null);
+  await app.openFiles([companion]);
+  const state = app.importState();
+  assert.equal(state.name, 'companion.png', 'later image selections must not resume the obsolete JSON import');
+  assert.deepEqual(state.document.notes, []);
+});
 
 test('importing single-movement JSON restores an empty movement between ordinary notes',async()=>{
   const app=appHarness(),source=rect(10,10,30,30),destination=rect(60,20,100,30);

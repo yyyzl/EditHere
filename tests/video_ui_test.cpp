@@ -1,9 +1,12 @@
 #include "feedback_test_helpers.h"
+#include "fixtures/video_fixture.h"
+#include "controller.h"
 #include "editor.h"
 #include "imagearea.h"
 #include "videoplayback.h"
 #include "ui.h"
 #include <QApplication>
+#include <QAudioOutput>
 #include <QComboBox>
 #include <QClipboard>
 #include <QCheckBox>
@@ -18,6 +21,7 @@
 #include <QImage>
 #include <QLabel>
 #include <QMediaPlayer>
+#include <QMenu>
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QPlainTextEdit>
@@ -191,6 +195,88 @@ class VideoUiTests : public QObject {
         QStandardPaths::setTestModeEnabled(true);
         QApplication::setApplicationName("EditHereVideoTests");
         applyTheme(ThemeMode::Light);
+    }
+    void closingAgentVideoPausesPlaybackAndPreservesWork_data() {
+        QTest::addColumn<bool>("playing");
+        QTest::newRow("playing") << true;
+        QTest::newRow("paused-annotation") << false;
+    }
+    void closingAgentVideoPausesPlaybackAndPreservesWork() {
+        QFETCH(bool, playing);
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const QString input = directory.filePath("silent.avi");
+        const QString output = directory.filePath("feedback.json");
+        QVERIFY(h2d::test::writeSilentVideoFixture(input));
+        auto settings = defaultSettings();
+        settings.checkUpdatesOnStartup = false;
+        Controller controller(nullptr, settings, directory.filePath("settings.ini"));
+        QSignalSpy ended(&controller, &Controller::agentSessionFinished);
+        const auto started = controller.handleAgentRequest({{"command", "annotate"}, {"input", input},
+            {"output", output}, {"timeout", 30}});
+        QVERIFY(started["pending"].toBool());
+        auto tray = controller.findChild<QSystemTrayIcon *>("edithereTray");
+        QVERIFY(tray && tray->contextMenu());
+        auto editor = qobject_cast<Editor *>(tray->contextMenu()->parentWidget());
+        QVERIFY(editor);
+        auto playback = editor->findChild<VideoPlayback *>();
+        QVERIFY(playback);
+        auto player = playback->findChild<QMediaPlayer *>();
+        auto audio = playback->findChild<QAudioOutput *>();
+        QVERIFY(player && audio);
+        QTRY_VERIFY_WITH_TIMEOUT(!playback->frameSize().isEmpty() && !playback->positioning(), 5000);
+        pointNote(*editor, {20, 20}, "Keep the annotated frame after closing");
+        const auto saved = editor->videoProject();
+        QCOMPARE(saved.frames.size(), 1);
+        const auto annotated = editor->document();
+        QPushButton *undo = nullptr;
+        for (auto button : editor->findChildren<QPushButton *>())
+            if (button->property("glyphName").toString() == "undo") undo = button;
+        QVERIFY(undo);
+        const bool couldUndo = undo->isEnabled();
+        QSignalSpy captures(playback, &VideoPlayback::frameCaptured);
+        if (playing) {
+            playback->toggle();
+            QTRY_VERIFY_WITH_TIMEOUT(playback->playing() && player->position() >= 100, 3000);
+        }
+        editor->close();
+        QVERIFY(!editor->isVisible());
+        QCOMPARE(ended.size(), 1);
+        QCOMPARE(ended.first()[1].toJsonObject()["error"].toObject()["code"].toString(), QString("cancelled"));
+        QVERIFY(!controller.handleAgentRequest({{"command", "status"}})["agentSession"].toBool());
+        QVERIFY(!QFileInfo::exists(output));
+        QVERIFY(editor->hasVideo());
+        QVERIFY(!playback->playing());
+        QCOMPARE(player->playbackState(), QMediaPlayer::PausedState);
+        QVERIFY(audio->isMuted());
+        // Let any queued presentation settle, then verify the hidden player
+        // remains paused rather than advancing behind the tray icon.
+        QTest::qWait(100);
+        const auto pausedPosition = player->position();
+        QTest::qWait(250);
+        QCOMPARE(player->position(), pausedPosition);
+        QCOMPARE(captures.size(), 0);
+        controller.activate();
+        QVERIFY(editor->isVisible());
+        QVERIFY(!playback->playing());
+        const auto restored = editor->videoProject();
+        QCOMPARE(restored.source, saved.source);
+        QCOMPARE(restored.frames.size(), saved.frames.size());
+        QCOMPARE(restored.frames.first().timestampUs, saved.frames.first().timestampUs);
+        QCOMPARE(restored.frames.first().document.image, saved.frames.first().document.image);
+        QVERIFY(restored.frames.first().document.notes == saved.frames.first().document.notes);
+        QCOMPARE(restored.dirty, saved.dirty);
+        if (!playing) {
+            // Do not call pause() on an already annotated frame: that would
+            // replace the annotation canvas with a preview and reset history.
+            QCOMPARE(editor->document().id, annotated.id);
+            QCOMPARE(editor->document().image, annotated.image);
+            QVERIFY(editor->document().notes == annotated.notes);
+            QCOMPARE(undo->isEnabled(), couldUndo);
+        }
+        playback->toggle();
+        QTRY_VERIFY_WITH_TIMEOUT(playback->playing() && player->position() > pausedPosition, 3000);
+        playback->pause();
     }
     void clearingVideoDoesNotRestoreAnInFlightPreview() {
         VideoPlayback playback;

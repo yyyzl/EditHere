@@ -3072,6 +3072,114 @@ class UiTests : public QObject {
         QVERIFY(editor.document().dirty);
         editor.hide();
     }
+    void closeReminderChangesOnlyAfterCompletedDecision_data() {
+        QTest::addColumn<QString>("decision");
+        for (const auto *decision : {"cancel", "cancel-save", "failed-save", "save", "discard"})
+            QTest::newRow(decision) << QString::fromLatin1(decision);
+    }
+    void closeReminderChangesOnlyAfterCompletedDecision() {
+        QFETCH(QString, decision);
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const QString settingsFile = directory.filePath("settings.ini");
+        auto settings = defaultSettings();
+        settings.checkUpdatesOnStartup = false;
+        settings.confirmBeforeDiscard = true;
+        QVERIFY(saveSettings(settings, nullptr, settingsFile));
+        Controller controller(nullptr, settings, settingsFile);
+        auto tray = controller.findChild<QSystemTrayIcon *>("edithereTray");
+        QVERIFY(tray && tray->contextMenu());
+        auto editor = qobject_cast<Editor *>(tray->contextMenu()->parentWidget());
+        QVERIFY(editor);
+        auto document = gridDocument();
+        Note note; note.isGlobal = true; note.comment = "Keep this unsaved annotation";
+        document.notes.append(note);
+        document.dirty = true;
+        editor->setDocument(document);
+        QSignalSpy preferences(editor, &Editor::preferencesChanged);
+        const QString output = directory.filePath("saved.edithere");
+        const bool completed = decision == "save" || decision == "discard";
+        bool prompted = false, selectedFile = false, errorShown = false, changedBeforeSave = false;
+        QTimer driver, watchdog;
+        connect(&driver, &QTimer::timeout, editor, [&] {
+            auto active = QApplication::activeModalWidget();
+            if (auto prompt = qobject_cast<QMessageBox *>(active)) {
+                if (prompt->checkBox() && !prompted) {
+                    prompted = true;
+                    prompt->checkBox()->setChecked(true);
+                    prompt->button(decision == "cancel" ? QMessageBox::Cancel :
+                                   decision == "discard" ? QMessageBox::Discard : QMessageBox::Save)->click();
+                } else if (!prompt->checkBox()) {
+                    errorShown = true;
+                    prompt->accept();
+                }
+            } else if (auto picker = qobject_cast<QFileDialog *>(active); picker && !selectedFile) {
+                selectedFile = true;
+                changedBeforeSave = !preferences.isEmpty() || !loadSettings(settingsFile).confirmBeforeDiscard;
+                if (decision == "cancel-save") {
+                    picker->reject();
+                } else {
+                    auto filename = picker->findChild<QLineEdit *>("fileNameEdit");
+                    QVERIFY(filename);
+                    filename->setText(output);
+                    if (decision == "failed-save") {
+                        // Make writing fail only after the picker accepted a valid path,
+                        // without relying on platform-specific read-only permissions.
+                        connect(picker, &QDialog::accepted, picker, [&] { QVERIFY(QDir().mkpath(output)); });
+                    }
+                    QMetaObject::invokeMethod(picker, "accept", Qt::DirectConnection);
+                }
+            }
+        });
+        bool timedOut = false;
+        connect(&watchdog, &QTimer::timeout, editor, [&] {
+            timedOut = true;
+            if (auto active = qobject_cast<QDialog *>(QApplication::activeModalWidget()))
+                active->reject();
+        });
+        watchdog.setSingleShot(true);
+        watchdog.start(4000); driver.start(20);
+        editor->close();
+        driver.stop(); watchdog.stop();
+        QVERIFY(!timedOut);
+        QVERIFY(prompted);
+        QCOMPARE(selectedFile, decision != "cancel" && decision != "discard");
+        QCOMPARE(errorShown, decision == "failed-save");
+        QVERIFY(!changedBeforeSave);
+        QCOMPARE(preferences.size(), completed ? 1 : 0);
+        QCOMPARE(loadSettings(settingsFile).confirmBeforeDiscard, !completed);
+        QCOMPARE(editor->hasDocument(), !completed);
+        QCOMPARE(editor->isVisible(), !completed);
+        if (decision == "save") {
+            QVERIFY(QFileInfo(output).isFile());
+            QCOMPARE(loadDocument(output).notes.first().comment, note.comment);
+        } else if (!completed) {
+            QVERIFY(!QFileInfo(output).isFile());
+            QCOMPARE(editor->document().png, document.png);
+            QVERIFY(editor->document().notes == document.notes);
+            QVERIFY(editor->hasUnsavedChanges());
+        }
+        // A cancelled/failed decision must still prompt on the next close.
+        // A completed Save/Discard may persist the user's explicit opt-out.
+        if (completed)
+            editor->setDocument(document);
+        bool nextPrompt = false;
+        disconnect(&driver, nullptr, editor, nullptr);
+        connect(&driver, &QTimer::timeout, editor, [&] {
+            if (auto prompt = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+                nextPrompt = true;
+                prompt->button(QMessageBox::Cancel)->click();
+            }
+        });
+        watchdog.start(4000); driver.start(20);
+        editor->close();
+        driver.stop(); watchdog.stop();
+        QVERIFY(!timedOut);
+        QCOMPARE(nextPrompt, !completed);
+        QCOMPARE(editor->hasDocument(), !completed);
+        QCOMPARE(preferences.size(), completed ? 1 : 0);
+        QCOMPARE(loadSettings(settingsFile).confirmBeforeDiscard, !completed);
+    }
     void invalidExportKeepsUnsavedWork() {
         QTemporaryDir dir;
         auto document = gridDocument();

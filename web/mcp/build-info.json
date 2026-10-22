@@ -66,7 +66,7 @@
     "web/mcp/package.json": "4ca49659c74be8efbca3f09e511fb3e5f18b7aa9ba8574e97df943426f2043d8",
     "web/mcp/server.mjs": "cfd613e5f35d9c2b9725287b0c0ac4e6b5b606aad7c95c1cc0439951d5cec319",
     "web/src/agent.js": "8278a35f364c0732a8a3fc7e122c5a4eb7f983ed042e3515ba0ed21512a54a40",
-    "web/src/app.js": "40630933d070d06943824159dde6d07b31516528731f040c87e10911d9872623",
+    "web/src/app.js": "3e01adf47479a256e9bd7e49b190de7bf39e09878f7d7602acef86a417c5c470",
     "web/src/bundle.js": "55db9c2aa41d934e7e9fb7fa1dba19d1d8c3bc66d645527b2e640ba74450c17b",
     "web/src/detector.js": "62907166244b47b0d18b561bd9f6d86120909aca8353077785620f1da12e8eee",
     "web/src/feedback.js": "087e866b060212a24c24f6c532385114d9af5ba2b4dff2e789512a9ade204492",
@@ -80,7 +80,7 @@
     "web/src/ui.js": "423aaa951db069cd915fd777ff0df6cefa9fc1c97d917b004a5a196fb7e40957"
   },
   "artifacts": {
-    "web/EditHere.mcp.html": "6e3d06ca16b952cbfbb681aa37b3cf29b406c953e7fa0c9aaaf53c839adc7596",
+    "web/EditHere.mcp.html": "e88b38d0af09dc9d9191d378e44c6c8e6d8004f82b62f27946d110a5aa7034b3",
     "web/mcp/server.bundle.cjs": "1cbcb1c2b75d1cc623ac2405e5247e5ad3504a303358e0eb3788217ec4c02672",
     "web/MCP-THIRD-PARTY-NOTICES.md": "507ce6aa295ec02125d556f2f1f7ee64790f79bba46b777e42931ddbfada6692"
   }

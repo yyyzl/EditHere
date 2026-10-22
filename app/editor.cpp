@@ -2071,13 +2071,17 @@ bool Editor::confirmDiscardOnClose() {
     auto *never = new QCheckBox(tr("不再提醒，可在设置中修改"), &box);
     box.setCheckBox(never);
     const auto answer = box.exec();
+    // A cancelled/failed save is not permission to discard on the next close.
+    // Persist the opt-out only after the chosen close action has succeeded.
+    const bool confirmed = answer == QMessageBox::Discard ||
+                           (answer == QMessageBox::Save && saveProject());
+    if (!confirmed)
+        return false;
     if (never->isChecked()) {
         preferences_.confirmBeforeDiscard = false;
         emit preferencesChanged();
     }
-    if (answer == QMessageBox::Cancel)
-        return false;
-    return answer == QMessageBox::Discard || saveProject();
+    return true;
 }
 void Editor::openFile(const QString &provided) {
     QString path = provided;
@@ -2249,6 +2253,10 @@ void Editor::closeEvent(QCloseEvent *e) {
     e->ignore();
     if (agentSession_) {
         finishNoteEdit();
+        // Keep the media and edits, but do not decode/play behind the tray.
+        // Pausing an already annotated frame would switch it back to preview.
+        if (video_ && videoPlayback_->playing())
+            videoPlayback_->pause();
         emit agentCancelRequested();
         hide();
         emit hiddenToTray();
